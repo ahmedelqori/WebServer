@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2024/12/27 14:46:50 by ael-qori         ###   ########.fr       */
+/*   Updated: 2024/12/27 16:18:58 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,6 +90,43 @@ bool is_ipaddress(std::string str, int index)
     index = INDEX;
     while (++index < Array.size() && ((byte = atoi(Array[index].c_str()) )|| true))
         if(Array[index] != itoa(byte) || byte < 0 || byte > 255) return false;
+    return true;
+}
+
+bool is_valid_server_name(std::string str, int index)
+{
+    while (++index < str.size())
+    {
+        if (str[index] == '-' && (index == 0 || index == str.size() - 1)) return false;
+        if (str[index] != '-' && (isalpha(str[index]) == false && isdigit(str[index]) == false)) return false;
+    }
+    return true;
+}
+
+bool is_hostname(std::string str, int index)
+{
+    int checkDots;
+    std::vector<std::string> Array;
+
+    while (str[++index])if(str[index] == '.' && (index == 0 || index == str.size() - 1 || str[index - 1] == '.' || str[index + 1] == '.')) return false;
+    Array = splitString(str, ".");
+    index = INDEX;
+    while (++index < Array.size())if (is_valid_server_name(Array[index], INDEX) == false) return false;
+    return true;
+}
+
+bool is_valid_size(std::string str, int index)
+{
+    std::vector<std::string> Array;
+    std::string tmp;
+    
+    while (str[++index]) if (isalnum(str[index]) == false) return false;
+    tmp = str[index - 1];    
+    str[index - 1] = ',';
+    str += tmp;
+    Array = splitString(str, ",");
+    if (Array.size() != 2) return false;
+    if ((Array[0] != itoa(atoi(Array[0].c_str()))) || (Array[1] != "K" && Array[1] != "M")) return false;
     return true;
 }
 
@@ -177,6 +214,7 @@ void    ConfigParser::parse()
             case    HOST_PORT   :   this->handleHostPortState();        break;
             case    SERVER_NAME :   this->handleServerNameState();      break;
             case    ERROR_PAGES :   this->parseErrorPages();            break;
+            case    CLIENT_MAX_BODY_SIZE: this->handleClientMaxBodySizeState(); break;
             default         :                                 break;
         }
     }
@@ -240,7 +278,12 @@ void    ConfigParser::handleServerNameState()
     if (!this->servers[this->current].getServerNames().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_SERVER_NAMES);
     server_names = splitString(this->fileContent[this->index++], WHITE_SPACES);
     if (server_names[0] != W_SERVER_NAMES || server_names.size() < 2) Error(3, ERR_SYNTAX, W_SERVER_NAMES, W_SERVER, itoa(this->current).c_str());
-    while (++i < server_names.size()) this->servers[this->current].setServerNames(server_names[i]);
+    while (++i < server_names.size())
+    {
+        if (is_hostname(server_names[i], INDEX) == false)
+            Error(2,ERR_SYNTAX, W_SERVER_NAMES);
+        this->servers[this->current].setServerNames(server_names[i]);
+    }
     this->currentServerState = ERROR_PAGES;
 }
 
@@ -256,7 +299,7 @@ void    ConfigParser::parseErrorPages()
         }
     }
     currentErrorPages = ERROR;
-    currentServerState = SERVER;
+    currentServerState = CLIENT_MAX_BODY_SIZE;
 }
 
 void    ConfigParser::handleErrorPagesState()
@@ -282,6 +325,19 @@ void    ConfigParser::handleErrorFileState()
     if (is_statuscode(error_page[1], INDEX) == false) Error(3, ERR_SYNTAX, W_ERROR, ERR_INVALID_STATUS_CODE);
     this->servers[this->current].setErrorPages(error_page[1], error_page[2]);
     this->currentErrorPages = ERROR;
+}
+
+void    ConfigParser::handleClientMaxBodySizeState()
+{
+    std::vector<std::string> clientMaxBodySize;
+    
+    if (!this->servers[this->current].getClientMaxBodySize().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_CLIENT_MAX_BODY_SIZE);
+    clientMaxBodySize = splitString(this->fileContent[this->index++], WHITE_SPACES);
+    if (clientMaxBodySize[0] != W_CLIENT_MAX_BODY_SIZE || clientMaxBodySize.size() != 2)
+        Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
+    if (is_valid_size(clientMaxBodySize[1], INDEX) == false) Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
+    this->servers[this->current].setClientMaxBodySize(clientMaxBodySize[0]);
+    this->currentServerState = SERVER; 
 }
 
 //////////////////////////////////////////////////////////

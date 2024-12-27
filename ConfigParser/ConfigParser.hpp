@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:23 by ael-qori          #+#    #+#             */
-/*   Updated: 2024/12/27 14:46:32 by ael-qori         ###   ########.fr       */
+/*   Updated: 2024/12/27 16:00:41 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -202,4 +202,5 @@ class ConfigParser
 #define W_HOST_PORT "host_port"
 #define W_SERVER_NAMES "server_names"
 #define W_ERRORS_PAGES "errors_pages"
+#define W_CLIENT_MAX_BODY_SIZE "client_max_body_size"
 #endif
