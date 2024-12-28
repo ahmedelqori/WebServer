@@ -1,4 +1,4 @@
-/* ************************************************************************** */
+ /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.hpp                                   :+:      :+:    :+:   */
@@ -12,6 +12,8 @@
 
 #ifndef CONFIG_PARSER_HPP
 #define CONFIG_PARSER_HPP
+
+
 
 #include <map> 
 #include <string> 
@@ -48,24 +50,27 @@ class LocationConfig
         bool                                directoryListing;
         std::string                         path;
         std::string                         root;
-        std::map <std::string, bool>        methods;
-        std::map <std::string, std::string> redirections;
+        std::vector <std::string>           methods;
+        std::string                         redirectionPath;
+        std::string                         indexFile;
+        int                                 redirectionCode;
     public:
         bool                                getDirectoryListing() const;
         std::string                         getPath() const; 
         std::string                         getRoot() const;
-        std::map<std::string, bool>         getMethods() const;
-        std::map <std::string, std::string> getRedirections() const;
-
+        std::vector<std::string>             getMethods() const;
+        std::string                         getRedirectionPath() const;
+        int                                 getRedirectionCode() const;
+        std::string                         getIndexFile() const;
+    
         void                                setDirectoryListing(bool b);
-        void                                setPath(std::string &path); 
-        void                                setRoot(std::string &root);
-        void                                setMethods(std::string &key, bool value);
-        void                                setRedirections(std::string &key, std::string &value);
-        
-        bool                                locationMethodValue(std::string &method);
-        bool                                locationMethodExist(std::string &method);
-        void                                locationUpdateMethod(std::string &str, bool b);
+        void                                setPath(std::string path); 
+        void                                setRoot(std::string root);
+        void                                setMethods(std::string key);
+        void                                setRedirectionCode(int statusCode);
+        void                                setRedirectionPath(std::string path);
+        void                                setIndexFile(std::string index);
+
 };
 
 class ServerConfig
@@ -78,6 +83,8 @@ class ServerConfig
         std::vector<LocationConfig>         locations;
         std::map<std::string, std::string>  errorPages;
     public:
+        ServerConfig();
+        int                                 locationIndex;
         int                                 getPort() const;
         std::string                         getClientMaxBodySize() const;
         std::string                         getHost() const;
@@ -110,22 +117,15 @@ class ConfigParser
             REDIRECTION_FILE  
         };
 
-        enum  PrefixState
+        enum  LocationsState
         {
-            PREFIX,
             PATH,
             METHODS,
             ROOT,
-            CLIENT_MAX,
-            DIRECTORY_LISING,
-            REDIRECTIONS,
-            END_PREFIX,
-        };
-
-        enum  LocationsState
-        {
-            LOCATION,
-            PREFIX_RED,
+            REDIRECTION,
+            AUTO_INDEX,
+            INDEX_FILE,
+            PATH_INFO,
             END_LOCATION
         };
 
@@ -150,7 +150,6 @@ class ConfigParser
         ErrorPagesState     currentErrorPages;
         LocationsState      currentLocationState;
         RedirectionsState   currentRedirectState;
-        PrefixState         currentPrefixState;
         
         ConfigParser();
         
@@ -162,22 +161,22 @@ class ConfigParser
         void    parse();
         void    parseErrorPages();
         void    parseLocations();
-        void    parsePrefix();
 
         void    handleHttpState();
         void    handleServerState();
         void    handleHostPortState();
         void    handleServerNameState();
-        void    handleMethodsState();
         void    handleErrorPagesState();
         void    handleErrorFileState();
         void    handleClientMaxBodySizeState();
-        void    handleLocationState();
-        void    handlePathState();
-        void    handlePrefixState();
-        void    handleMethodsPrefixState();
-        void    handleRootPrefixState();
-        // void    handleClientMaxBodySizePrefixState();
+        void    handlePathLocationState();
+        void    handleMethodsState();
+        void    handleRootState();
+        void    handleRedirectionState();
+        void    handleDirectoryListingState();
+        void    handleIndexFileState();
+
+        void    printHttp();
 };
 
 
@@ -193,6 +192,7 @@ class ConfigParser
 #define ERR_CLOSE_PAR "Closed parenthesis doesnt exist for "
 #define ERR_DUPLICATED "Duplicated"
 #define ERR_INVALID_STATUS_CODE "Invalid Status Code"
+#define ERR_UNKNOWN_METHOD "Unknown Method"
 #define LINE    "Line "
 #define W_HTTP "http"
 #define W_ERROR   "error"
@@ -203,4 +203,19 @@ class ConfigParser
 #define W_SERVER_NAMES "server_names"
 #define W_ERRORS_PAGES "errors_pages"
 #define W_CLIENT_MAX_BODY_SIZE "client_max_body_size"
+#define W_LOCATION "location"
+#define W_METHODS  "methods"
+#define W_ROOT  "root"
+#define W_REDIRECTION "redirect"
+#define W_AUTO_INDEX "auto_index"
+#define W_INDEX "index"
+
+#define GET "GET"
+#define POST "POST"
+#define DELETE "DELETE"
+
+#define ON  "ON"
+#define OFF "OFF"
+
+
 #endif
