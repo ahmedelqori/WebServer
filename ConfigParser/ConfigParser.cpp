@@ -6,159 +6,11 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2024/12/28 12:34:46 by ael-qori         ###   ########.fr       */
+/*   Updated: 2024/12/28 14:28:42 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ConfigParser.hpp"
-
-std::string itoa(size_t n)
-{
-    std::ostringstream oss;
-
-    oss << n;
-    return oss.str();
-}
-std::string trim(const std::string& str) {
-    size_t start = str.find_first_not_of(" \t\n\r\f\v");
-    if (start == std::string::npos) 
-        return "";
-    size_t end = str.find_last_not_of(" \t\n\r\f\v");
-    return str.substr(start, end - start + 1);
-}
-
-
-std::vector<std::string> splitString(const std::string& input, const std::string& delimiters)
-{
-    std::vector<std::string> tokens;
-    std::string token;
-    size_t start = 0;
-    
-    for (size_t i = 0; i < input.length(); ++i) {
-        if (delimiters.find(input[i]) != std::string::npos) {
-            if (!token.empty()) {
-                tokens.push_back(token);
-                token.clear();
-            }
-        } else {
-            token += input[i];
-        }
-    }
-    if (!token.empty()) {
-        tokens.push_back(token);
-    }
-    return tokens;
-}
-void    Error(int count, ...)
-{
-    int     i = -1;
-    va_list args;
-    va_start(args, count);
-    std::string error;
-    char    *tmp;
-    
-    count--;
-    tmp = (char *)va_arg(args, char *);
-    if (tmp == NULL)    
-        return ;
-    error += BOLDRED + std::string(tmp) + RESET;
-    while (++i <  count)
-    {
-        tmp = (char *)va_arg(args, char *);
-        if (tmp == NULL) return ;
-        error += " " + std::string(tmp);
-    }
-    throw std::runtime_error(error);
-}
-
-bool is_number(std::string str, int index)
-{
-    while (str[++index]) if (!isdigit(str[index])) return false;
-    return true;
-}
-
-bool is_ipaddress(std::string str, int index)
-{
-    std::vector<std::string> Array;
-    int countDots = 0;
-    int byte;
-
-    while (str[++index]) if (str[index] == '.') countDots++;
-    if (countDots != 3) return false;
-    Array = splitString(str, ".");
-    if (Array.size() != 4 && ((index = INDEX) || true)) return false;
-    index = INDEX;
-    while (++index < Array.size() && ((byte = atoi(Array[index].c_str()) )|| true))
-        if(Array[index] != itoa(byte) || byte < 0 || byte > 255) return false;
-    return true;
-}
-
-bool is_valid_server_name(std::string str, int index)
-{
-    while (++index < str.size())
-    {
-        if (str[index] == '-' && (index == 0 || index == str.size() - 1)) return false;
-        if (str[index] != '-' && (isalpha(str[index]) == false && isdigit(str[index]) == false)) return false;
-    }
-    return true;
-}
-
-bool is_hostname(std::string str, int index)
-{
-    int checkDots;
-    std::vector<std::string> Array;
-
-    while (str[++index])if(str[index] == '.' && (index == 0 || index == str.size() - 1 || str[index - 1] == '.' || str[index + 1] == '.')) return false;
-    Array = splitString(str, ".");
-    index = INDEX;
-    while (++index < Array.size())if (is_valid_server_name(Array[index], INDEX) == false) return false;
-    return true;
-}
-
-bool is_valid_size(std::string str, int index)
-{
-    std::vector<std::string> Array;
-    std::string tmp;
-    
-    while (str[++index]) if (isalnum(str[index]) == false) return false;
-    tmp = str[index - 1];    
-    str[index - 1] = ',';
-    str += tmp;
-    Array = splitString(str, ",");
-    if (Array.size() != 2) return false;
-    if ((Array[0] != itoa(atoi(Array[0].c_str()))) || (Array[1] != "K" && Array[1] != "M")) return false;
-    return true;
-}
-
-bool is_statuscode(std::string str, int index)
-{
-    int status;
-
-    status = atoi(str.c_str());
-    if (itoa(status) != str) return false;
-    if (status < 100 || status > 999) return false;
-    return true;
-}
-
-bool is_duplicated(std::vector<std::string> vec, std::string v, int index)
-{
-    while (++index < vec.size()) if (vec[index] == v) return false;
-    return true;
-}
-
-int main(int ac, char **av)
-{
-    ConfigParser    configParser;
-    
-    try {
-        if (ac != 2) Error(2, ERR_INPUT, ERR_ARGS);
-        configParser.parseFile(av[1]);
-        configParser.printHttp();
-    } catch (const std::exception& e) {
-        std::cerr << std::endl <<e.what() << std::endl << std::endl;
-        return 1; 
-    }   
-}
 
 ServerConfig::ServerConfig():locationIndex(0){};
 ConfigParser::ConfigParser():index(0), current(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
@@ -188,8 +40,9 @@ void    ConfigParser::deleteEmptyLines()
 
 void    ConfigParser::checkClosedParenthesis()
 {
-    std::vector<std::string> parenthesis;
-    int index , i, tmp;
+    std::vector<std::string>    parenthesis;
+    int                         index, i, tmp;
+
     for(index = 0; index < this->fileContent.size(); index++)
     {
         tmp = 0;
@@ -202,7 +55,6 @@ void    ConfigParser::checkClosedParenthesis()
                 else parenthesis.push_back(O_PAR);
             }
         }
-
         this->fileContent[index] = trim(this->fileContent[index]);
         if (tmp && this->fileContent[index].size() != 1) Error(3, ERR_SYNTAX, LINE, itoa(index + 1).c_str());
     }
@@ -355,13 +207,13 @@ void    ConfigParser::parseLocations()
     {
         switch (currentLocationState)
         {
-            case PATH:      this->handlePathLocationState() ;       break; 
-            case METHODS:   this->handleMethodsState()      ;       break;
-            case ROOT:      this->handleRootState()         ;       break;
-            case REDIRECTION: this->handleRedirectionState()     ;       break;
-            case AUTO_INDEX:    this->handleDirectoryListingState();     break;
-            case INDEX_FILE:    this->handleIndexFileState();           break;
-            default:                                                break;
+            case PATH           :       this->handlePathLocationState()     ;       break; 
+            case METHODS        :       this->handleMethodsState()          ;       break;
+            case ROOT           :       this->handleRootState()             ;       break;
+            case REDIRECTION    :       this->handleRedirectionState()      ;       break;
+            case AUTO_INDEX     :       this->handleDirectoryListingState() ;       break;
+            case INDEX_FILE     :       this->handleIndexFileState()        ;       break;
+            default             :                                                   break;
         }
     }
     currentLocationState = PATH;
@@ -369,9 +221,9 @@ void    ConfigParser::parseLocations()
 
 void    ConfigParser::handlePathLocationState()
 {
-    static bool locationPageState = false;
-    std::vector<std::string> Array;
-    int                         index = this->servers[this->current].locationIndex;
+    int                             index = this->servers[this->current].locationIndex;
+    static bool                     locationPageState = false;
+    std::vector<std::string>        Array;
 
     if (!locationPageState)
     { 
@@ -395,9 +247,9 @@ void    ConfigParser::handlePathLocationState()
 
 void    ConfigParser::handleMethodsState()
 {
-    std::vector<std::string>    Array;
-    int                         index = this->servers[this->current].locationIndex;
     int                         i;
+    int                         index = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
 
     i = 1;
     if(!this->servers[this->current].getLocations()[index].getMethods().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_METHODS);
@@ -415,8 +267,8 @@ void    ConfigParser::handleMethodsState()
 
 void    ConfigParser::handleRootState()
 {
-    std::vector<std::string> Array;
-    int                     index = this->servers[this->current].locationIndex;
+    int                         index = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
     
     if (!this->servers[this->current].getLocations()[index].getRoot().empty())Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_ROOT);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
@@ -427,14 +279,14 @@ void    ConfigParser::handleRootState()
 
 void    ConfigParser::handleRedirectionState()
 {
-    std::vector<std::string> Array;
-    int                     index  = this->servers[this->current].locationIndex;
+    int                         index = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
 
     if (!this->servers[this->current].getLocations()[index].getRedirectionPath().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_REDIRECTION);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
     
     if (Array.size() != 3 || Array[0] != W_REDIRECTION) Error(2, ERR_SYNTAX, W_REDIRECTION);
-    if (is_number(Array[1], INDEX) == false || Array[1] != itoa(atoi(Array[1].c_str())) || atoi(Array[1].c_str()) < 0 || atoi(Array[1].c_str()) > 999)
+    if (!is_number(Array[1], INDEX) || !is_statuscode(Array[1], INDEX))
         Error(2, ERR_SYNTAX, W_REDIRECTION);
     this->servers[this->current].getLocations()[index].setRedirectionCode(atoi(Array[1].c_str()));
     this->servers[this->current].getLocations()[index].setRedirectionPath(Array[2]);
@@ -443,8 +295,8 @@ void    ConfigParser::handleRedirectionState()
 
 void    ConfigParser::handleDirectoryListingState()
 {
-    std::vector<std::string> Array;
-    int                     index  = this->servers[this->current].locationIndex;
+    int                         index = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
     
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
     if (Array.size() != 2 || Array[0] != W_AUTO_INDEX) Error(2, ERR_SYNTAX, W_AUTO_INDEX);
@@ -456,8 +308,8 @@ void    ConfigParser::handleDirectoryListingState()
 
 void    ConfigParser::handleIndexFileState()
 {
-    std::vector<std::string> Array;
-    int                     index  = this->servers[this->current].locationIndex;
+    int                         index  = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
 
     if (!this->servers[this->current].getLocations()[index].getIndexFile().empty()) Error(3,ERR_SYNTAX, ERR_DUPLICATED, W_INDEX);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
@@ -466,125 +318,38 @@ void    ConfigParser::handleIndexFileState()
     this->currentLocationState = PATH;
 }
 
-//////////////////////////////////////////////////////////
-std::string                         ServerConfig::getClientMaxBodySize() const
-{
-    return this->clientMaxBodySize; 
-}
-int                                 ServerConfig::getPort() const
-{
-    return this->port;   
-}
-std::string                         ServerConfig::getHost() const
-{
-    return this->host;
-}
-std::vector<std::string>            ServerConfig::getServerNames() const
-{
-    return this->serverNames;
-}
-std::vector<LocationConfig>         &ServerConfig::getLocations()
-{
-    return this->locations;
-}
-std::map<std::string, std::string>  ServerConfig::getErrorPages() const
-{
-    return this->errorPages;
-}
-void                                ServerConfig::setClientMaxBodySize(std::string &size)
-{
-    this->clientMaxBodySize = size;
-}
-void                                ServerConfig::setPort(int port)
-{
-    this->port = port;   
-}
-void                                ServerConfig::setHost(std::string &host)
-{
-    this->host = host;   
-}
-void                                ServerConfig::setServerNames(std::string &server_name)
-{
-    this->serverNames.push_back(server_name);
-}
-void                                ServerConfig::setLocations(LocationConfig location)
-{
-    this->locations.push_back(location);
-}
-void                                ServerConfig::setErrorPages(std::string &key, std::string &value)
-{
-    this->errorPages.insert(std::make_pair(key, value));   
-}
+int                                 ServerConfig::getPort() const                                       {    return this->port;}
+std::string                         ServerConfig::getHost() const                                       {    return this->host;}
+std::vector<LocationConfig>         &ServerConfig::getLocations()                                       {    return this->locations;}
+std::map<std::string, std::string>  ServerConfig::getErrorPages() const                                 {    return this->errorPages;}
+std::vector<std::string>            ServerConfig::getServerNames() const                                {    return this->serverNames;}
+std::string                         ServerConfig::getClientMaxBodySize() const                          {    return this->clientMaxBodySize; }
+            
+std::string                         LocationConfig::getPath() const                                     {    return this->path;}
+std::string                         LocationConfig::getRoot() const                                     {    return this->root;}
+std::vector<std::string>            LocationConfig::getMethods() const                                  {    return this->methods;}
+std::string                         LocationConfig::getIndexFile() const                                {    return this->indexFile;}
+std::string                         LocationConfig::getRedirectionPath() const                          {    return this->redirectionPath;}
+int                                 LocationConfig::getRedirectionCode() const                          {    return this->redirectionCode;}
+bool                                LocationConfig::getDirectoryListing() const                         {    return this->directoryListing;}
 
 
+void                                ServerConfig::setPort(int port)                                     {    this->port = port;}
+void                                ServerConfig::setHost(std::string &host)                            {    this->host = host;}
+void                                ServerConfig::setLocations(LocationConfig location)                 {    this->locations.push_back(location);}
+void                                ServerConfig::setClientMaxBodySize(std::string &size)               {    this->clientMaxBodySize = size;}
+void                                ServerConfig::setServerNames(std::string &server_name)              {    this->serverNames.push_back(server_name);}
+void                                ServerConfig::setErrorPages(std::string &key, std::string &value)   {    this->errorPages.insert(std::make_pair(key, value));}
 
-///////////////////////////////////
+void                                LocationConfig::setPath(std::string path)                           {    this->path = path;}
+void                                LocationConfig::setRoot(std::string root)                           {    this->root = root;}
+void                                LocationConfig::setMethods(std::string key)                         {    this->methods.push_back(key);}
+void                                LocationConfig::setDirectoryListing(bool b)                         {    this->directoryListing = b;}
+void                                LocationConfig::setIndexFile(std::string index)                     {    this->indexFile = index;}
+void                                LocationConfig::setRedirectionCode(int statusCode)                  {    this->redirectionCode = statusCode;}
+void                                LocationConfig::setRedirectionPath(std::string path)                {    this->redirectionPath = path;}
 
-std::string                         LocationConfig::getPath() const
-{
-    return this->path;
-}
 
-void                               LocationConfig::setPath(std::string path)
-{
-    this->path = path;
-}
-
-std::vector<std::string>             LocationConfig::getMethods() const
-{
-    return this->methods;
-}
-
-void                                LocationConfig::setMethods(std::string key)
-{
-    this->methods.push_back(key);
-}
-
-std::string                         LocationConfig::getRoot() const
-{
-    return this->root;
-}
-
-void                                LocationConfig::setRoot(std::string root)
-{
-    this->root = root;
-}
-
-std::string         LocationConfig::getRedirectionPath() const
-{
-    return this->redirectionPath;
-}
-int              LocationConfig::getRedirectionCode() const
-{
-    return this->redirectionCode;
-}
-
-void                                LocationConfig::setRedirectionCode(int statusCode)
-{
-    this->redirectionCode = statusCode;
-}
-void                                LocationConfig::setRedirectionPath(std::string path)
-{
-    this->redirectionPath = path;
-}
-
-bool                                LocationConfig::getDirectoryListing() const
-{
-    return this->directoryListing;
-}
-void                                LocationConfig::setDirectoryListing(bool b)
-{
-    this->directoryListing = b;
-}
-
-std::string                         LocationConfig::getIndexFile() const
-{
-    return this->indexFile;
-}
-void                                LocationConfig::setIndexFile(std::string index)
-{
-    this->indexFile = index;
-}
 /// Moment of the truth
 
 void        ConfigParser::printHttp()
