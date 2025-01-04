@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2024/12/28 14:28:42 by ael-qori         ###   ########.fr       */
+/*   Updated: 2024/12/31 13:58:08 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,16 +69,17 @@ void    ConfigParser::parse()
     {
         switch (currentServerState)
         {
-            case    HTTP        :   this->handleHttpState();            break;
-            case    SERVER      :   this->handleServerState();          break;
-            case    HOST_PORT   :   this->handleHostPortState();        break;
-            case    SERVER_NAME :   this->handleServerNameState();      break;
-            case    ERROR_PAGES :   this->parseErrorPages();            break;
-            case    CLIENT_MAX_BODY_SIZE: this->handleClientMaxBodySizeState(); break;
-            case    LOCATIONS   :   this->parseLocations();             break;
-            default         :                                 break;
+            case    HTTP                    :   this->handleHttpState()                 ; break;
+            case    SERVER                  :   this->handleServerState()               ; break;
+            case    HOST_PORT               :   this->handleHostPortState()             ; break;
+            case    SERVER_NAME             :   this->handleServerNameState()           ; break;
+            case    ERROR_PAGES             :   this->parseErrorPages()                 ; break;
+            case    CLIENT_MAX_BODY_SIZE    :   this->handleClientMaxBodySizeState()    ; break;
+            case    LOCATIONS               :   this->parseLocations()                  ; break;
+            default                         :                                             break;
         }
     }
+    if (DONE && this->index + 1 != this->fileContent.size()) Error(2, ERR_SYNTAX, W_HTTP);
 }
 
 void    ConfigParser::handleHttpState()
@@ -93,9 +94,9 @@ void    ConfigParser::handleHttpState()
     }
     else
     {
-        if (this->fileContent[++this->index] != C_PAR && this->fileContent.size() == this->index + 1) Error(3, ERR_SYNTAX, ERR_CLOSE_PAR, W_HTTP);
+        if (this->fileContent[++this->index] != C_PAR && this->fileContent.size() == this->index ) Error(3, ERR_SYNTAX, ERR_CLOSE_PAR, W_HTTP);
         else if (this->fileContent[this->index] != C_PAR) this->currentServerState = SERVER;
-        else  this->currentServerState = DONE;
+        else  (this->currentServerState = DONE);
     }
 }
 
