@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/05 19:01:35 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/05 19:04:04 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,27 +65,20 @@ void CGI::processUpload(const string &uploadPath)
 map<string, string> CGI::createHeader(string output)
 {
 	map<string, string> header;
+	istringstream stream(output);
 	string line;
-	ifstream file("cgi_output.txt");
-	if (file.is_open())
+
+	while (getline(stream, line))
 	{
-		while (getline(file, line))
+		if (line.empty())
+			break;
+		string::size_type pos = line.find(":");
+		if (pos != string::npos)
 		{
-			if (line.empty())
-				break;
-			string::size_type pos = line.find(":");
-			if (pos != string::npos)
-			{
-				string key = line.substr(0, pos);
-				string value = line.substr(pos + 1);
-				header[key] = value;
-			}
+			string key = line.substr(0, pos);
+			string value = line.substr(pos + 1);
+			header[key] = value;
 		}
-		file.close();
-	}
-	else
-	{
-		throw CGIException("Error: Unable to open file for reading CGI response");
 	}
 	return header;
 }
