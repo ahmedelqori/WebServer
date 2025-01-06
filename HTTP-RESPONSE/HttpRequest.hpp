@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 16:05:18 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/05 16:04:19 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/06 12:24:58 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,4 +98,7 @@ struct ResponseInfos
     int getStatus() const { return status; }
     string getStatusMessage() const { return statusMessage; }
     const map<string, string> &getHeaders() const { return headers; }
+    string getBody() const { return body; }
+    void setStatus(int s) { status = s; }
+    void setStatusMessage(const string &sm) { statusMessage = sm; }
 };
