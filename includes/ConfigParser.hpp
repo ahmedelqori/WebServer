@@ -118,9 +118,9 @@ class ServerConfig
 class ConfigParser
 {
     private:
-        std::vector <ServerConfig> servers;
         
     public:
+        std::vector <ServerConfig> servers;
         std::vector<std::string>                fileContent;
         int                                     current;
         int                                     index;

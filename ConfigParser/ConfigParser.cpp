@@ -6,11 +6,11 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2024/12/31 13:58:08 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/06 14:45:13 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ConfigParser.hpp"
+#include "../includes/ConfigParser.hpp"
 
 ServerConfig::ServerConfig():locationIndex(0){};
 ConfigParser::ConfigParser():index(0), current(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
