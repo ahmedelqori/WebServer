@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/06 14:43:58 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/07 17:21:31 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,8 @@ class  Server
 {
     public:
         ConfigParser configFile;
-        std::vector<addrinfo *> res; 
+        std::vector<addrinfo *> res;
+        std::vector<int> socketContainer; 
         addrinfo hints;
         
     
@@ -39,6 +40,10 @@ class  Server
         void    start();
         void    init();
         void    createLinkedListOfAddr();
+        void    createSockets();
+        void    bindSockets();
+        void    listenForConnection();
+        void    acceptAndAnswer();
 };
 
 
