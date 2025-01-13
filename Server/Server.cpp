@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/06 14:46:56 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/13 18:08:54 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,24 +29,152 @@ void    Server::createLinkedListOfAddr()
             &this->res[index]) != 0) 
             throw std::runtime_error("Error in getaddre info");
     }
-
 }
+
+void    Server::createSockets()
+{
+    int index = INDEX;
+    int sockFD = INDEX;
+    int opt = 1;
+
+    while (++index < this->configFile.servers.size())
+    {
+        sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype, this->res[index]->ai_protocol);
+        if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+            Error(2, "Error Server:: ", "setsockopt");
+        this->socketContainer.push_back(sockFD);
+    }
+}
+
+void    Server::bindSockets()
+{
+    int index = INDEX;
+    int status = INDEX;
+    
+    while (++index < this->socketContainer.size())
+    {
+        status = bind(this->socketContainer[index], this->res[index]->ai_addr, this->res[index]->ai_addrlen);
+        if (status == -1)
+            Error(2, "Error Server:: ", "bind");
+    }
+}
+
+void    Server::listenForConnection()
+{
+    int index = INDEX;
+    int status = INDEX;
+    while (++index < this->res.size())
+    {
+        status = listen(this->socketContainer[index], 10);
+        if (status == -1)
+            Error(2, "Error Server:: ", "listen");  
+    }
+}
+
+void Server::init_epoll()
+{
+    this->epollFD = epoll_create(1024);
+    if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
+    this->registerAllSockets();
+}
+
+void   Server::registerAllSockets()
+{
+    size_t index = INDEX;
+
+    while (++index < this->socketContainer.size())
+    {
+        this->event.events = EPOLLIN;
+        this->event.data.fd = this->socketContainer[index];
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) {
+            Error(2, "Error Server:: ", "epoll_ctl (add socket)");
+        }
+    }
+}
+
+void Server::acceptConnection(int index)
+{
+    struct sockaddr_storage clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+    int acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
+    
+    if (acceptFD == -1) Error(2, "Error Server:: ", "accept");
+
+    struct epoll_event event;
+    event.events = EPOLLIN | EPOLLET;
+    event.data.fd = acceptFD;
+    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, acceptFD, &event) == -1) {
+        close(acceptFD);
+        Error(2, "Error Server:: ", "epoll_ctl (add acceptFD)");
+    }
+
+    std::cout << "New client connected, fd: " << acceptFD << std::endl;
+}
+
+void Server::processData(int index)
+{
+    char buffer[1024];
+    memset(buffer, 0, sizeof(buffer));
+
+    int bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
+    if (bytesReceived <= 0) {
+        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
+        close(events[index].data.fd);
+        std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
+        return;
+    }
+
+    std::cout << "Received: " << buffer << std::endl;
+    std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
+    if (send(events[index].data.fd, response.c_str(), response.size(), 0) == -1) Error(2, "Error Server:: ", "send");
+    close(events[index].data.fd);
+}
+
+void Server::acceptAndAnswer(int index)
+{
+    if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[index].data.fd) != this->socketContainer.end())
+        acceptConnection(index);
+    else 
+        processData(index);
+}
+
+void Server::findServer()
+{
+    int index = INDEX;
+    while (++index < this->nfds)
+        if (this->events[index].events & EPOLLIN) 
+            this->acceptAndAnswer(index);
+}
+
+void Server::loopAndWait()
+{
+    while (true) {
+        this->nfds = epoll_wait(epollFD, events, 1024, -1);
+        if (this->nfds == -1) Error(2, "Error Server:: ", "epoll_wait");
+        this->findServer();
+    }
+    close(epollFD);
+}
+
 
 void    Server::init()
 {
+    char addr[INET6_ADDRSTRLEN];
+
     memset(&this->hints, 0, sizeof(this->hints));
     this->hints.ai_family = AF_INET;
     this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_flags = AI_PASSIVE;
+
     this->createLinkedListOfAddr();
+    this->createSockets();
+    this->bindSockets();
+    this->listenForConnection();
 }
 
-void    Server::start()
-{
+void Server::start() {
     this->init();
-    while (++serverIndex < this->configFile.servers.size())
-    {
-
-        freeaddrinfo(this->res[serverIndex]);
-    }
+    this->init_epoll();
+    this->loopAndWait();
 }
