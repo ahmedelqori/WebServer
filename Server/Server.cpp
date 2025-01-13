@@ -6,12 +6,11 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/08 10:47:02 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/13 18:08:54 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
-#include <sys/epoll.h> // Include epoll header
 
 Server::Server():serverIndex(INDEX){}
 
@@ -36,12 +35,14 @@ void    Server::createSockets()
 {
     int index = INDEX;
     int sockFD = INDEX;
+    int opt = 1;
 
     while (++index < this->configFile.servers.size())
     {
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype, this->res[index]->ai_protocol);
-        if (sockFD == -1)
-            Error(2, "Error Server:: ", "sockets");
+        if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+            Error(2, "Error Server:: ", "setsockopt");
         this->socketContainer.push_back(sockFD);
     }
 }
@@ -71,130 +72,109 @@ void    Server::listenForConnection()
     }
 }
 
+void Server::init_epoll()
+{
+    this->epollFD = epoll_create(1024);
+    if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
+    this->registerAllSockets();
+}
 
-// void Server::acceptAndAnswer()
-// {
-//     int index = INDEX;
-//     int acceptFD = INDEX;
-//     char buffer[1024];
+void   Server::registerAllSockets()
+{
+    size_t index = INDEX;
 
-//     while (++index < this->res.size())
-//     {
-//         acceptFD = accept(this->socketContainer[index], this->res[index]->ai_addr, &this->res[index]->ai_addrlen);
-//         if (acceptFD == -1)
-//         {
-//             Error(2, "Error Server:: ", "accept");
-//             continue;
-//         }
+    while (++index < this->socketContainer.size())
+    {
+        this->event.events = EPOLLIN;
+        this->event.data.fd = this->socketContainer[index];
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) {
+            Error(2, "Error Server:: ", "epoll_ctl (add socket)");
+        }
+    }
+}
 
-//         memset(buffer, 0, sizeof(buffer));
-//         int bytesReceived = recv(acceptFD, buffer, sizeof(buffer) - 1, 0);
-//         if (bytesReceived == -1)
-//         {
-//             Error(2, "Error Server:: ", "recv");
-//             close(acceptFD);
-//             continue;
-//         }
-//         buffer[bytesReceived] = '\0'; 
-//         std::cout << "Received: " << buffer << std::endl;
+void Server::acceptConnection(int index)
+{
+    struct sockaddr_storage clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+    int acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
+    
+    if (acceptFD == -1) Error(2, "Error Server:: ", "accept");
 
-//         std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
-//         if (send(acceptFD, response.c_str(), response.size(), 0) == -1)
-//         {
-//             Error(2, "Error Server:: ", "send");
-//         }
+    struct epoll_event event;
+    event.events = EPOLLIN | EPOLLET;
+    event.data.fd = acceptFD;
+    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, acceptFD, &event) == -1) {
+        close(acceptFD);
+        Error(2, "Error Server:: ", "epoll_ctl (add acceptFD)");
+    }
 
-//         close(acceptFD);
-//     }
-// }
+    std::cout << "New client connected, fd: " << acceptFD << std::endl;
+}
+
+void Server::processData(int index)
+{
+    char buffer[1024];
+    memset(buffer, 0, sizeof(buffer));
+
+    int bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
+    if (bytesReceived <= 0) {
+        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
+        close(events[index].data.fd);
+        std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
+        return;
+    }
+
+    std::cout << "Received: " << buffer << std::endl;
+    std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
+    if (send(events[index].data.fd, response.c_str(), response.size(), 0) == -1) Error(2, "Error Server:: ", "send");
+    close(events[index].data.fd);
+}
+
+void Server::acceptAndAnswer(int index)
+{
+    if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[index].data.fd) != this->socketContainer.end())
+        acceptConnection(index);
+    else 
+        processData(index);
+}
+
+void Server::findServer()
+{
+    int index = INDEX;
+    while (++index < this->nfds)
+        if (this->events[index].events & EPOLLIN) 
+            this->acceptAndAnswer(index);
+}
+
+void Server::loopAndWait()
+{
+    while (true) {
+        this->nfds = epoll_wait(epollFD, events, 1024, -1);
+        if (this->nfds == -1) Error(2, "Error Server:: ", "epoll_wait");
+        this->findServer();
+    }
+    close(epollFD);
+}
+
 
 void    Server::init()
 {
     char addr[INET6_ADDRSTRLEN];
+
     memset(&this->hints, 0, sizeof(this->hints));
     this->hints.ai_family = AF_INET;
     this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_flags = AI_PASSIVE;
+
     this->createLinkedListOfAddr();
     this->createSockets();
     this->bindSockets();
     this->listenForConnection();
-    // this->acceptAndAnswer();
 }
 
-
-// Updated Server class methods
 void Server::start() {
     this->init();
-
-    int epollFD = epoll_create1(0); // Create an epoll instance
-    if (epollFD == -1) {
-        Error(2, "Error Server:: ", "epoll_create1");
-    }
-
-    struct epoll_event event;
-    struct epoll_event events[1024]; // Array to store triggered events
-    int nfds;
-
-    // Register all sockets to epoll
-    for (size_t i = 0; i < this->socketContainer.size(); ++i) {
-        event.events = EPOLLIN; // Monitor for read events
-        event.data.fd = this->socketContainer[i];
-        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[i], &event) == -1) {
-            Error(2, "Error Server:: ", "epoll_ctl (add socket)");
-        }
-    }
-
-    while (true) {
-        nfds = epoll_wait(epollFD, events, 1024, -1); // Wait for events
-        if (nfds == -1) {
-            Error(2, "Error Server:: ", "epoll_wait");
-        }
-
-        for (int i = 0; i < nfds; ++i) {
-            if (events[i].events & EPOLLIN) {
-                if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[i].data.fd) != this->socketContainer.end()) {
-                    // Incoming connection
-                    struct sockaddr_storage clientAddr;
-                    socklen_t addrLen = sizeof(clientAddr);
-                    int acceptFD = accept(events[i].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
-                    if (acceptFD == -1) {
-                        Error(2, "Error Server:: ", "accept");
-                        continue;
-                    }
-
-                    // Register the accepted socket with epoll
-                    event.events = EPOLLIN | EPOLLET; // Edge-triggered mode
-                    event.data.fd = acceptFD;
-                    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, acceptFD, &event) == -1) {
-                        Error(2, "Error Server:: ", "epoll_ctl (add acceptFD)");
-                        close(acceptFD);
-                    }
-                } else {
-                    // Data ready to read
-                    char buffer[1024];
-                    memset(buffer, 0, sizeof(buffer));
-                    int bytesReceived = recv(events[i].data.fd, buffer, sizeof(buffer) - 1, 0);
-                    if (bytesReceived <= 0) {
-                        // Handle client disconnect or error
-                        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-                        close(events[i].data.fd);
-                        continue;
-                    }
-
-                    std::cout << "Received: " << buffer << std::endl;
-
-                    // Send response
-                    std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
-                    if (send(events[i].data.fd, response.c_str(), response.size(), 0) == -1) {
-                        Error(2, "Error Server:: ", "send");
-                    }
-
-                    close(events[i].data.fd); // Close after handling request
-                }
-            }
-        }
-    }
-
-    close(epollFD); // Close epoll instance
+    this->init_epoll();
+    this->loopAndWait();
 }
