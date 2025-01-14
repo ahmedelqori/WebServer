@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/13 23:42:01 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 02:27:47 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,6 +123,12 @@ void HttpParser::parseRequestLine(const string &line)
     state = HEADER;
 }
 
+static void lowerString(string& str)
+{
+    for (size_t i = 0; i < str.size() ; i++)
+        str[i] = tolower(str[i]);
+}
+
 void HttpParser::parseHeader(const string &line)
 {
     if (line.empty())
@@ -142,6 +148,7 @@ void HttpParser::parseHeader(const string &line)
     string value = line.substr(separator + 1);
 
      trim(name);
+     lowerString(name);
     trim(value);
 
     headers[name] = value;
@@ -189,11 +196,8 @@ void HttpParser::trim(string &str)
 
 void HttpParser::validateHeaders()
 {
-    if (!headers.count("Host"))
-    {
-         cout << "400 here hosty "  << endl;
+    if (!headers.count("host"))
         throw BAD_REQUEST;
-    }
 }
 
 void HttpParser::validateMethod(const std::string &method)

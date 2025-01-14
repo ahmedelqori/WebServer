@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 00:06:11 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 01:27:56 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,13 +45,11 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
-
     if (ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/")
     {
         string redirectUrl = ressource.url + "/";
         return ressourceToResponse(handleRedirect(redirectUrl, REDIRECTED), REDIRECTED);
     }
-
     if (!ressource.indexFile.empty())
     {
         string indexPath;
@@ -65,42 +63,10 @@ ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
             return ServerUtils::serveFile(indexPath, OK);
         }
     }
-    cout << "index auto: " << (ressource.autoindex ? "ON " : "OFF") << endl; 
     if (ressource.autoindex)
-    {
-
         return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
-    }
-
-    cout << "I cannot find the files " << endl;
-
-    return ServerUtils::serveFile("www/404.html", NOT_FOUND);
-    // vector<string>::const_iterator inedxIter = ressource.indexFiles.begin();
-    // for (; inedxIter != ressource.indexFiles.end(); inedxIter++)
-    // {
-    //     string indexPath;
-
-    //     cout << "is indexed: " << ressource.autoindex << endl;
-    //     if (ressource.autoindex)
-    //         indexPath = ressource.root + "/" + ressource.url + '/' + *inedxIter;
-    //     else
-    //         indexPath = ressource.root + "/" + *inedxIter;
-    //     cout << "--------here-------\n";
-    //     cout << indexPath << "\n";
-    //     cout << "---------------\n";
-    //     struct stat indexStat;
-    //     if (stat(indexPath.c_str(), &indexStat) == 0)
-    //     {
-    //         return ServerUtils::serveFile(indexPath, OK);
-    //     }
-    // }
-    // if (ressource.autoindex)
-    // {
-    //     cout << "autoindexing\n";
-    //     return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
-    // }
-
-    // return ServerUtils::serveFile("www/404.html", NOT_FOUND); // should be 403
+    return ServerUtils::serveFile(generateErrorPage(FORBIDEN), FORBIDEN);
+    
 }
 
 string ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)

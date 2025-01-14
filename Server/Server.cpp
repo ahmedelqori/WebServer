@@ -6,13 +6,13 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/14 00:21:47 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 00:52:56 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
-Server::Server() : serverIndex(INDEX),RequestHandler(configFile)
+Server::Server() : serverIndex(INDEX)
 {
 }
 
@@ -137,7 +137,7 @@ void Server::processData(int index)
     requestData.append(buffer, bytesReceived);
     if (!requestData.empty())
     {
-        this->handleRequest(events[index].data.fd, requestData, epollFD);
+        this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
     }
     // std::cout << "Received: " << buffer << std::endl;
     // std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
@@ -160,7 +160,7 @@ void Server::findServer()
         if (this->events[index].events & EPOLLIN)
             this->acceptAndAnswer(index);
         else if (this->events[index].events & EPOLLOUT)
-            this->handleWriteEvent(epollFD, events[index].data.fd);
+            this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd);
 }
 
 void Server::loopAndWait()
@@ -184,6 +184,9 @@ void Server::init()
     this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_flags = AI_PASSIVE;
 
+    this->requestHandler.server_config = this->configFile;
+    
+    // this->requestHandler(this->configFile);
     this->createLinkedListOfAddr();
     this->createSockets();
     this->bindSockets();

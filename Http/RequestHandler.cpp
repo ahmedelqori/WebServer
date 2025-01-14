@@ -6,16 +6,15 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 00:21:18 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 02:31:26 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/RequestHandler.hpp"
 
-RequestHandler::RequestHandler(const ConfigParser configParser)
+RequestHandler::RequestHandler()
 {
 }
-
 
 void RequestHandler::cleanupConnection(int epoll_fd, int fd)
 {
@@ -189,11 +188,11 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
-    if (!matchLocation(bestMatch, url))
+    if (!matchLocation(bestMatch, url, request))
     {
-        cout << "Location not found" << endl;
-        string f_path = "www"+ url;
-        cout << "full path is : " << f_path << endl;
+        // cout << "Location not found" << endl;
+        string f_path = "www" + url;
+        // cout << "full path is : " << f_path << endl;
         ressource.autoindex = false;
         ressource.indexFile = bestMatch.getIndexFile();
         ressource.path = f_path;
@@ -217,7 +216,6 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
 ResponseInfos RequestHandler::handlePost(const Request &request)
 {
-  
 
     return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
 }
@@ -253,21 +251,36 @@ ResponseInfos RequestHandler::handleDelete(const Request &request)
     return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
 }
 
-bool RequestHandler::matchLocation(LocationConfig &loc, const string url)
+static ServerConfig getServer(ConfigParser configParser, std::string host)
 {
-    vector<LocationConfig> locs = server_config.getLocations();
+
+    std::vector<ServerConfig> currentServers = configParser.servers;
+    cout << "Hsot : " << host << endl;
+    int i = INDEX;
+    while (++i < currentServers.size())
+    {
+        stringstream server(currentServers[i].getHost() ,ios_base::app | ios_base::out); 
+        server << ':';
+        server << currentServers[i].getPort();
+        cout << "server name: " << server.str() << endl;
+        if (!host.empty() && server.str() == host)
+            break;
+    }
+
+    return currentServers[i];
+}
+
+bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
+{
+
+    vector<LocationConfig> locs = getServer(server_config, request.getHeader("host")).getLocations();
     vector<LocationConfig>::const_iterator loc_it = locs.begin();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
 
-    std::cout << "Length is : " << locs.size() << endl;
     for (int i = 0; i < locs.size(); i++)
     {
-        // const string &locationPath = (*loc_it).getPath();
-
-        cout << "location is : " << locs[i].getPath() << endl;
-
         // Check if URL starts with this location path
         if (url.find(locs[i].getPath()) == 0)
         {
@@ -375,7 +388,7 @@ ostream &operator<<(ostream &os, const Request &request)
 {
     os << "------------- Method: ---------\n " << request.getMethod() << endl;
     os << "------------- URI: ----------\n"
-       << request.getPath() << endl; 
+       << request.getPath() << endl;
     os << "------------- Version: ---------\n " << request.getVersion() << endl;
     os << "------------- Headers: ----------\n"
        << endl;

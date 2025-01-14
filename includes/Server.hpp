@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/14 00:32:53 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 00:50:20 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@
 #include <sys/epoll.h>
 
 
-class  Server : public RequestHandler
+class  Server
 {
     private:
         int epollFD;
@@ -38,6 +38,7 @@ class  Server : public RequestHandler
         int nfds;
     public:
         ConfigParser configFile;
+        RequestHandler requestHandler;
         std::vector<addrinfo *> res;
         std::vector<int> socketContainer; 
         addrinfo hints;

@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 00:38:21 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 01:49:45 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,13 +59,11 @@ private:
     map<int, ResponseInfos> responses_info;
 
 public: 
-    // Req
-    // Request request;
+    RequestHandler();
+    Request request;
+    
+    ConfigParser server_config;
 
-    // Note
-    ConfigParser configFile;
-
-    RequestHandler(const ConfigParser configParser);
     void handleRequest(int client_sockfd, string req, int epoll_fd);
     ResponseInfos processRequest(const Request &request);
     ResponseInfos handleGet(const Request &request);
@@ -76,7 +74,7 @@ public:
     void modifyEpollEvent(int epoll_fd, int fd, uint32_t events);
     void handleWriteEvent(int epoll_fd, int current_fd);
     ResponseInfos serveRessourceOrFail(RessourceInfo ressource);
-    bool matchLocation(LocationConfig &loc, const string url);
+    bool matchLocation(LocationConfig &loc, const string url,const Request& request);
 };
 
 ostream &operator<<(ostream &os, const Request &request);
