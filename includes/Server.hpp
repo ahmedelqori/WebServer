@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/13 18:00:38 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/14 00:50:20 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,10 @@
 #define SERVER_HPP
 
 #include "../includes/ConfigParser.hpp"
+#include "../includes/Request.hpp"
+#include "../includes/Response.hpp"
+#include "../includes/ServerUtils.hpp"
+#include "../includes/RequestHandler.hpp"
 
 #include <iostream>
 #include <sys/socket.h>
@@ -34,11 +38,10 @@ class  Server
         int nfds;
     public:
         ConfigParser configFile;
+        RequestHandler requestHandler;
         std::vector<addrinfo *> res;
         std::vector<int> socketContainer; 
         addrinfo hints;
-        
-    
 
         int serverIndex;
         
