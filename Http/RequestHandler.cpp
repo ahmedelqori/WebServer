@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 02:31:26 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 22:06:45 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,9 +37,14 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     // Set up response
     response.setStatus(response_info.status, response_info.statusMessage);
-    response.addHeader("Content-Type", "text/html");
-    if (response_info.status == REDIRECTED)
-        response.addHeader("Location", request.getDecodedPath() + "/");
+    map<string,string>::const_iterator head = response_info.headers.begin();
+    while (head != response_info.headers.end())
+    {
+        cout << "header-> " << head->first << " : " << head->second << endl;
+        response.addHeader(head->first,head->second);
+        head++;
+    }
+    
     response.setBody(response_info.body);
 
     string response_str = response.getResponse();
@@ -87,9 +92,9 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             cout << "\n--------------body -----------\n"
                  << request.getBody() << endl;
 
-            if (request.getMethod() == "POST" &&
-                request.hasHeader("Transfer-Encoding") &&
-                request.getHeader("Transfer-Encoding") == "chunked")
+            if (request.getMethod() == POST &&
+                request.hasHeader("transfer-encoding") &&
+                request.getHeader("transfer-encoding") == "chunked")
             {
 
                 cout << "Starting chunked upload" << endl;
@@ -188,6 +193,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
+     cout << "LOCATION FOUND  000" << bestMatch.getPath() << endl;
     if (!matchLocation(bestMatch, url, request))
     {
         // cout << "Location not found" << endl;
@@ -195,15 +201,20 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         // cout << "full path is : " << f_path << endl;
         ressource.autoindex = false;
         ressource.indexFile = bestMatch.getIndexFile();
+        ressource.redirect = "";
         ressource.path = f_path;
         ressource.root = "www";
         ressource.url = url;
         return serveRessourceOrFail(ressource);
     }
 
+    cout << "LOCATION FOUND " << bestMatch.getPath() << endl;
+
     string fullPath = bestMatch.getRoot() + url;
     ressource.autoindex = bestMatch.getDirectoryListing();
     ressource.indexFile = bestMatch.getIndexFile();
+    ressource.redirect = bestMatch.getRedirectionPath();
+    cout << ressource.redirect << "   hello " << endl; 
     ressource.path = fullPath;
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
@@ -264,17 +275,16 @@ static ServerConfig getServer(ConfigParser configParser, std::string host)
         server << currentServers[i].getPort();
         cout << "server name: " << server.str() << endl;
         if (!host.empty() && server.str() == host)
-            break;
+            return currentServers[i];
     }
 
-    return currentServers[i];
+    return currentServers[0];
 }
 
 bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
 {
 
     vector<LocationConfig> locs = getServer(server_config, request.getHeader("host")).getLocations();
-    vector<LocationConfig>::const_iterator loc_it = locs.begin();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
@@ -289,7 +299,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             {
                 // std::cout << "Found better match: " << locationPath << std::endl;
                 found = true;
-                bestMatch = *loc_it;
+                bestMatch = locs[i];
 
                 bestMatchLength = locs[i].getPath().length();
             }
@@ -301,8 +311,6 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 {
-
-    // cout << "serveRessourceOrFail " << ressource.path << endl;
 
     switch (ServerUtils::checkResource(ressource.path))
     {

@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 01:27:56 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/14 21:23:49 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,10 +45,14 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
-    if (ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/")
+
+    cout << "redirect path : " << ressource.redirect << endl;
+    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
     {
-        string redirectUrl = ressource.url + "/";
-        return ressourceToResponse(handleRedirect(redirectUrl, REDIRECTED), REDIRECTED);
+        cout << "Redirection to " << ressource.redirect << endl;
+        string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
+        cout << "reddirect url is : " << redirectUrl << endl;
+        return  handleRedirect(redirectUrl, REDIRECTED);
     }
     if (!ressource.indexFile.empty())
     {
@@ -69,18 +73,18 @@ ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
     
 }
 
-string ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
+ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
 {
     stringstream redirectResponse;
     redirectResponse << "<html><body><h1>" << statusCode << " Redirect</h1><p>Redirecting to: <a href=\"" << redirectUrl << "\">" << redirectUrl << "</a></p></body></html>";
 
-    // Respond with redirect header
-    Response redirectResponseObj;
-    redirectResponseObj.setStatus(statusCode, "Redirect");
-    redirectResponseObj.addHeader("Location", redirectUrl);
-    redirectResponseObj.setBody(redirectResponse.str());
+    ResponseInfos infos;
+    infos.body = redirectResponse.str();
+    infos.headers["Location"] = redirectUrl;
+    infos.status = statusCode;
+    infos.statusMessage = "Moved permanentely";
 
-    return redirectResponseObj.getResponse();
+    return infos;
 }
 
 ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
@@ -155,7 +159,6 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
     response_infos.body = ressource;
     response_infos.status = code;
     response_infos.statusMessage = Request::generateStatusMsg(code);
-    response_infos.headers["Content-Type"] = "text/html";
     response_infos.headers["Content-Length"] = to_string(ressource.length());
 
     return response_infos;

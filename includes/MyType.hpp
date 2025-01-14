@@ -55,6 +55,7 @@ struct RessourceInfo
     string url;
     string root;
     string indexFile;
+    string redirect;
     bool autoindex;
 };
 

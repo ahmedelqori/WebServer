@@ -25,7 +25,7 @@ public:
     static ResponseInfos serveFile(const std::string& filePath,int code);
     static string generateUniqueString();
     static ResponseInfos generateDirectoryListing(const string &dirPath);
-    static string handleRedirect(const string &redirectUrl, int statusCode);
+    static ResponseInfos handleRedirect(const string &redirectUrl, int statusCode);
 
 };
 
