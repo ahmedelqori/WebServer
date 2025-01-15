@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 21:23:49 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/15 20:25:48 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ File_Type ServerUtils::checkResource(const std::string &fullPath)
 
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
-    ifstream file(filePath, ios::in | ios::binary);
+    ifstream file(filePath.c_str(), ios::in | ios::binary);
     if (!file.is_open())
         return ServerUtils::ressourceToResponse(generateErrorPage(NOT_FOUND), NOT_FOUND);
 
@@ -102,7 +102,7 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
 
     dirContent << "<html><body><h1>Directory Listing for " << dirPath << "</h1><ul>";
 
-    while ((entry = readdir(dir)) != nullptr)
+    while ((entry = readdir(dir)) != NULL)
     {
         // Skip . and .. directories
         // if (string(entry->d_name) == "." || string(entry->d_name) == "..")
@@ -118,28 +118,27 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
 
 std::string ServerUtils::getMimeType(const std::string &filePath)
 {
-    std::map<std::string, std::string> mimeTypes = {
-        {".html", "text/html"},
-        {".htm", "text/html"},
-        {".css", "text/css"},
-        {".js", "application/javascript"},
-        {".png", "image/png"},
-        {".jpg", "image/jpeg"},
-        {".jpeg", "image/jpeg"},
-        {".gif", "image/gif"},
-        {".svg", "image/svg+xml"},
-        {".ico", "image/x-icon"},
-        {".mp3", "audio/mpeg"},
-        {".wav", "audio/wav"},
-        {".ogg", "audio/ogg"},
-        {".mp4", "video/mp4"},
-        {".webm", "video/webm"},
-        {".txt", "text/plain"},
-        {".json", "application/json"},
-        {".xml", "application/xml"},
-        {".pdf", "application/pdf"},
-        {".zip", "application/zip"},
-    };
+    std::map<std::string, std::string> mimeTypes;
+    mimeTypes[".html"] = "text/html";
+    mimeTypes[".htm"] = "text/html";
+    mimeTypes[".css"] = "text/css";
+    mimeTypes[".js"] = "application/javascript";
+    mimeTypes[".png"] = "image/png";
+    mimeTypes[".jpg"] = "image/jpeg";
+    mimeTypes[".jpeg"] = "image/jpeg";
+    mimeTypes[".gif"] = "image/gif";
+    mimeTypes[".svg"] = "image/svg+xml";
+    mimeTypes[".ico"] = "image/x-icon";
+    mimeTypes[".mp3"] = "audio/mpeg";
+    mimeTypes[".wav"] = "audio/wav";
+    mimeTypes[".ogg"] = "audio/ogg";
+    mimeTypes[".mp4"] = "video/mp4";
+    mimeTypes[".webm"] = "video/webm";
+    mimeTypes[".txt"] = "text/plain";
+    mimeTypes[".json"] = "application/json";
+    mimeTypes[".xml"] = "application/xml";
+    mimeTypes[".pdf"] = "application/pdf";
+    mimeTypes[".zip"] = "application/zip";
 
     size_t extPos = filePath.find_last_of('.');
     if (extPos != std::string::npos)
@@ -159,7 +158,9 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
     response_infos.body = ressource;
     response_infos.status = code;
     response_infos.statusMessage = Request::generateStatusMsg(code);
-    response_infos.headers["Content-Length"] = to_string(ressource.length());
+    stringstream ss;
+    ss << ressource.length();
+    response_infos.headers["Content-Length"] = ss.str();
 
     return response_infos;
 }
@@ -189,7 +190,7 @@ bool ServerUtils::isMethodAllowed(const std::string &method, const std::vector<s
 string ServerUtils::generateUniqueString()
 {
     stringstream ss;
-    ss << hex << time(nullptr);
+    ss << hex << time(NULL);
     return ss.str();
 }
 
@@ -199,10 +200,13 @@ ostream &operator<<(ostream &os, const ResponseInfos &response)
        << response.status << " " << response.statusMessage << endl;
     os << "Headers: \n"
        << endl;
-    for (const auto &header : response.headers)
+    map<string,string>::const_iterator it = response.headers.begin();
+    while (it != response.headers.end())
     {
-        os << header.first << ": " << header.second << endl;
+       os << it->first << ": " << it->second << endl;
+       it++;
     }
+   
     os << "Body: \n"
        << endl;
     os << response.body << endl;

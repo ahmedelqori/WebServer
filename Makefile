@@ -6,13 +6,13 @@
 #    By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/12/19 15:51:13 by ael-qori          #+#    #+#              #
-#    Updated: 2025/01/14 16:57:09 by aes-sarg         ###   ########.fr        #
+#    Updated: 2025/01/16 00:05:03 by aes-sarg         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
 CXX = c++
-CXXFLAGS = #-std=c++98 #-fsanitize=address#-Wall -Wextra -Werror
+CXXFLAGS = -std=c++98 -g3 -fsanitize=address#-Wall -Wextra -Werror
 RM = rm -rf
 
 SRC = main.cpp ./ConfigParser/ConfigParser.cpp ./ConfigParser/UtilsParser.cpp ./Server/Server.cpp \

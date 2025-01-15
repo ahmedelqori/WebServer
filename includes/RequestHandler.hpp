@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 01:49:45 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 00:04:38 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,33 +28,82 @@
 #include "HttpParser.hpp"
 #include "ConfigParser.hpp"
 
+
+class ChunkedUploadState
+{
+public:
+    string partial_request;
+    bool headers_parsed;
+    size_t content_remaining;
+    string upload_path;
+    ofstream output_file;  // We keep the ofstream, but only open it when needed
+
+    // Constructor
+    ChunkedUploadState() 
+        : headers_parsed(false), content_remaining(0), output_file() 
+    {}
+
+    // Destructor
+    ~ChunkedUploadState()
+    {
+        if (output_file.is_open())
+        {
+            output_file.close();
+        }
+    }
+
+    // Copy constructor
+    ChunkedUploadState(const ChunkedUploadState& other)
+        : partial_request(other.partial_request),
+          headers_parsed(other.headers_parsed),
+          content_remaining(other.content_remaining),
+          upload_path(other.upload_path)
+    {
+        // No need to copy the ofstream, only copy the path and data
+        // File opening is handled lazily when necessary
+        if (other.output_file.is_open())
+        {
+            output_file.open(upload_path.c_str(), ios::binary | ios::app);
+        }
+    }
+
+    // Copy assignment operator
+    ChunkedUploadState& operator=(const ChunkedUploadState& other)
+    {
+        if (this != &other)
+        {
+            partial_request = other.partial_request;
+            headers_parsed = other.headers_parsed;
+            content_remaining = other.content_remaining;
+            upload_path = other.upload_path;
+
+            // Close the existing file stream if open
+            if (output_file.is_open())
+                output_file.close();
+
+            // Open the file stream if the other has it open
+            if (other.output_file.is_open())
+            {
+                output_file.open(upload_path.c_str(), ios::binary | ios::app);
+            }
+        }
+        return *this;
+    }
+
+    // Method to get a writable file stream
+    ofstream& getOutputFileStream()
+    {
+        if (!output_file.is_open())
+        {
+            output_file.open(upload_path.c_str(), ios::binary | ios::app);
+        }
+        return output_file;
+    }
+};
+
 class RequestHandler
 {
 private:
-    struct ChunkedUploadState
-    {
-        string partial_request;
-        bool headers_parsed;
-        size_t content_remaining;
-        string upload_path;
-        ofstream output_file;
-
-        ChunkedUploadState &operator=(const ChunkedUploadState &other)
-        {
-            if (this != &other)
-            {
-                this->partial_request = other.partial_request;
-                this->headers_parsed = other.headers_parsed;
-                this->content_remaining = other.content_remaining;
-                this->upload_path = other.upload_path;
-                if (this->output_file.is_open())
-                    this->output_file.close();
-                if (other.output_file.is_open())
-                    this->output_file.open(other.upload_path, ios::binary | ios::app);
-            }
-            return *this;
-        }
-    };
     map<int, ChunkedUploadState> chunked_uploads;
     map<int, ResponseInfos> responses_info;
 

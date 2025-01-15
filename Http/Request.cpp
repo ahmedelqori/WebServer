@@ -6,12 +6,13 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:23 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/13 23:42:11 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/15 20:29:57 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Request.hpp"
 #include <iomanip>
+#include <sstream>
 
 Request::Request()
 {
@@ -73,27 +74,13 @@ std::string Request::generateStatusMsg(const int code)
     std::string msg = "";
     switch (code)
     {
-    case 400:
-        msg = "Bad Request";
-        break;
-    case 404:
-        msg = "Not Found";
-        break;
-    case 405:
-        msg = " Method Not Allowed";
-        break;
-    case 414:
-        msg = "URI TOO LONG";
-        break;
-    case 403:
-        msg = "Forbidden";
-        break;
-    case 505:
-        msg = "HTTP Version Not Supported";
-        break;
-
-    default:
-        break;
+    case 400: msg = "Bad Request";                  break;
+    case 404: msg = "Not Found";                    break;
+    case 405: msg = " Method Not Allowed";          break;
+    case 414: msg = "URI TOO LONG";                 break;
+    case 403: msg = "Forbidden";                    break;
+    case 505: msg = "HTTP Version Not Supported";   break;
+    default:                                        break;
     }
 
     return msg;

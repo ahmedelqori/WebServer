@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 02:27:47 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 00:04:10 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,11 +20,11 @@ HttpParser::HttpParser() : state(REQUEST_LINE) {}
 Request HttpParser::parse(const string &data)
 {
 
-cout << "Parsing request" << data << endl;
-    
+    cout << "Parsing request" << data << endl;
+
     string line;
     // size_t pos = data.find("\r\n\r\n");
-    for (size_t i = 0; i < data.size() ; ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
         if (data[i] == '\r' && state != BODY)
         {
@@ -53,7 +53,6 @@ cout << "Parsing request" << data << endl;
 
     // if (!(line.empty() && line.find("\r\n\r\n") && state == BODY))
     //     throw BAD_REQUEST;
-        
 
     if (!line.empty())
     {
@@ -61,7 +60,7 @@ cout << "Parsing request" << data << endl;
     }
 
     validateHeaders();
-    
+
     Request request;
     request.setMethod(method);
     request.setPath(uri);
@@ -111,7 +110,7 @@ void HttpParser::parseRequestLine(const string &line)
     }
     validateMethod(method);
     uri = validatePath(uri);
-    
+
     if (uri.find("?") != string::npos)
     {
         size_t separator = uri.find("?");
@@ -123,9 +122,9 @@ void HttpParser::parseRequestLine(const string &line)
     state = HEADER;
 }
 
-static void lowerString(string& str)
+static void lowerString(string &str)
 {
-    for (size_t i = 0; i < str.size() ; i++)
+    for (size_t i = 0; i < str.size(); i++)
         str[i] = tolower(str[i]);
 }
 
@@ -147,8 +146,8 @@ void HttpParser::parseHeader(const string &line)
     string name = line.substr(0, separator);
     string value = line.substr(separator + 1);
 
-     trim(name);
-     lowerString(name);
+    trim(name);
+    lowerString(name);
     trim(value);
 
     headers[name] = value;
@@ -168,7 +167,7 @@ void HttpParser::parseBody(const string &body)
     // }
     // else
     // {
-      
+
     //     // if (body.find("\r\n\n") != string::npos)
     //     // {
     //     //     throw BAD_REQUEST;
@@ -202,22 +201,19 @@ void HttpParser::validateHeaders()
 
 void HttpParser::validateMethod(const std::string &method)
 {
-    static const std::set<std::string> allowedMethods = {"GET", "POST", "DELETE"};
-    if (allowedMethods.find(method) == allowedMethods.end())
-    {
+    if (method != POST && method != GET && method != DELETE)
         throw NOT_ALLOWED;
-    }
 }
 
 bool HttpParser::isHexDigit(char c)
 {
-    return std::isxdigit(static_cast<unsigned char>(c));
+    return isxdigit(static_cast<unsigned char>(c));
 }
 
 char HttpParser::hexToChar(char high, char low)
 {
-    int highVal = std::isdigit(high) ? high - '0' : std::toupper(high) - 'A' + 10;
-    int lowVal = std::isdigit(low) ? low - '0' : std::toupper(low) - 'A' + 10;
+    int highVal = isdigit(high) ? high - '0' : toupper(high) - 'A' + 10;
+    int lowVal = isdigit(low) ? low - '0' : toupper(low) - 'A' + 10;
     return static_cast<char>((highVal << 4) | lowVal);
 }
 
@@ -344,7 +340,6 @@ std::string HttpParser::validatePath(const std::string &path)
     return decoded;
 }
 
-// Updated isBadUriTraversal function
 bool HttpParser::isBadUriTraversal(const std::string &uri)
 {
     std::string::size_type pos = 0;

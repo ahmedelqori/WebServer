@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 22:06:45 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/15 23:42:36 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,20 +84,13 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     {
         if (chunked_uploads.find(client_sockfd) == chunked_uploads.end())
         {
-            cout << "New request coming " << endl;
-
             HttpParser parser;
             request = parser.parse(req);
-
-            cout << "\n--------------body -----------\n"
-                 << request.getBody() << endl;
 
             if (request.getMethod() == POST &&
                 request.hasHeader("transfer-encoding") &&
                 request.getHeader("transfer-encoding") == "chunked")
             {
-
-                cout << "Starting chunked upload" << endl;
 
                 // Initialize chunked upload state
                 ChunkedUploadState state;
@@ -352,7 +345,11 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
         size_t chunk_size = 0;
         try
         {
-            chunk_size = std::stoul(chunk_size_str, nullptr, 16);
+            std::stringstream ss;
+            ss << std::hex << chunk_size_str;
+            ss >> chunk_size;
+            if (ss.fail())
+                throw BAD_REQUEST;
         }
         catch (...)
         {
@@ -400,9 +397,10 @@ ostream &operator<<(ostream &os, const Request &request)
     os << "------------- Version: ---------\n " << request.getVersion() << endl;
     os << "------------- Headers: ----------\n"
        << endl;
-    for (const auto &header : request.getHeaders())
+    map<string, string>::const_iterator it;
+    for (it = request.getHeaders().begin(); it != request.getHeaders().end(); ++it)
     {
-        os << header.first << ": " << header.second << endl;
+        os << it->first << ": " << it->second << endl;
     }
     os << "---------------Body:----------------\n"
        << request.getBody() << endl;

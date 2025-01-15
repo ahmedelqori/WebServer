@@ -1,7 +1,10 @@
 {
     "files.associations": {
         "iosfwd": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "algorithm": "cpp",
+        "iostream": "cpp",
+        "fstream": "cpp"
     },
     "42header.email": "aes-sarg@student.1337.ma",
     "42header.username": "aes-sarg"

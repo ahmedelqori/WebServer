@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:30 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/13 23:42:28 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/15 20:22:02 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,9 +35,11 @@ string Response::getResponse() const
 {
     stringstream ss;
     ss << "HTTP/1.1 " << status_code << " " << status_message << "\r\n";
-    for (const auto &header : headers)
+    map<string,string>::const_iterator it = headers.begin();
+    while (it != headers.end())
     {
-        ss << header.first << ": " << header.second << "\r\n";
+        ss << it->first << ": " << it->second << "\r\n";
+        it++; 
     }
     ss << "\r\n"
        << body;
