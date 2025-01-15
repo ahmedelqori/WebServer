@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/06 14:45:13 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/15 22:21:32 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -120,16 +120,21 @@ void    ConfigParser::handleServerState()
 void    ConfigParser::handleHostPortState()
 {
     std::vector<std::string> hostPort;
-    
+    std::vector<std::string> ArrayPorts;
+    int                      index = INDEX;
+
     if (!this->servers[this->current].getHost().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_HOST_PORT);
     hostPort = splitString(this->fileContent[this->index++], WHITE_SPACES);
     if (hostPort[0] != W_HOST_PORT || hostPort.size() != 2) Error(4, ERR_SYNTAX, W_HOST_PORT, W_SERVER, itoa(this->current).c_str());
     hostPort = splitString(hostPort[1], ":");
     if (hostPort.size() != 2) Error(4, ERR_SYNTAX, W_HOST_PORT, W_SERVER, itoa(this->current).c_str());
     if (is_ipaddress(hostPort[0], INDEX) == false) Error(2, ERR_SYNTAX, W_HOST);
-    if (is_number(hostPort[1], INDEX) == false || atoi(hostPort[1].c_str()) < 0 || atoi(hostPort[1].c_str()) > 65535) Error(2, ERR_SYNTAX, W_PORT);
+    ArrayPorts = splitString(hostPort[1], ",");
+    while (++index < ArrayPorts.size())
+        if (is_number(ArrayPorts[index], INDEX) == false || atoi(ArrayPorts[index].c_str()) < 0 || atoi(ArrayPorts[index].c_str()) > 65535) Error(2, ERR_SYNTAX, W_PORT);
+        else this->servers[this->current].setPorts(atoi(ArrayPorts[index].c_str()));
     this->servers[this->current].setHost(hostPort[0]);
-    this->servers[this->current].setPort(atoi(hostPort[1].c_str()));
+    this->servers[this->current].setPort(atoi(ArrayPorts[0].c_str()));
     this->currentServerState = SERVER_NAME;
 }
 
@@ -255,7 +260,7 @@ void    ConfigParser::handleMethodsState()
     i = 1;
     if(!this->servers[this->current].getLocations()[index].getMethods().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_METHODS);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
-    if (Array[0] != W_METHODS) Error(2, ERR_SYNTAX, W_METHODS);
+    if (Array[0] != W_METHODS) {(this->currentLocationState = ROOT, this->index--); return;};
     while (i < Array.size())
     {
         if (Array[i] != GET && Array[i] != POST && Array[i] != DELETE) Error(3, ERR_SYNTAX, ERR_UNKNOWN_METHOD, Array[i].c_str()); 
@@ -273,7 +278,8 @@ void    ConfigParser::handleRootState()
     
     if (!this->servers[this->current].getLocations()[index].getRoot().empty())Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_ROOT);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
-    if (Array.size() != 2 || Array[0] != W_ROOT) Error(2, ERR_SYNTAX, W_ROOT);
+    if (Array[0] != W_ROOT) {(this->currentLocationState = REDIRECTION, this->index--); return ;};
+    if (Array.size() != 2) Error(2, ERR_SYNTAX, W_ROOT);
     this->servers[this->current].getLocations()[index].setRoot(Array[1]);
     this->currentLocationState = REDIRECTION;
 }
@@ -286,7 +292,8 @@ void    ConfigParser::handleRedirectionState()
     if (!this->servers[this->current].getLocations()[index].getRedirectionPath().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_REDIRECTION);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
     
-    if (Array.size() != 3 || Array[0] != W_REDIRECTION) Error(2, ERR_SYNTAX, W_REDIRECTION);
+    if (Array[0] != W_REDIRECTION)  {(this->currentLocationState = AUTO_INDEX, this->index--); return ;};
+    if (Array.size() != 3) Error(2, ERR_SYNTAX, W_REDIRECTION);
     if (!is_number(Array[1], INDEX) || !is_statuscode(Array[1], INDEX))
         Error(2, ERR_SYNTAX, W_REDIRECTION);
     this->servers[this->current].getLocations()[index].setRedirectionCode(atoi(Array[1].c_str()));
@@ -300,7 +307,8 @@ void    ConfigParser::handleDirectoryListingState()
     std::vector<std::string>    Array;
     
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
-    if (Array.size() != 2 || Array[0] != W_AUTO_INDEX) Error(2, ERR_SYNTAX, W_AUTO_INDEX);
+    if (Array[0] != W_AUTO_INDEX) {(this->currentLocationState = INDEX_FILE, this->index--); return ;};
+    if (Array.size() != 2) Error(2, ERR_SYNTAX, W_AUTO_INDEX);
     if (Array[1] != ON && Array[1] != OFF) Error(3, ERR_SYNTAX, ON, OFF);
     if (Array[1] == ON) this->servers[this->current].getLocations()[index].setDirectoryListing(true);
     else this->servers[this->current].getLocations()[index].setDirectoryListing(false);
@@ -314,12 +322,14 @@ void    ConfigParser::handleIndexFileState()
 
     if (!this->servers[this->current].getLocations()[index].getIndexFile().empty()) Error(3,ERR_SYNTAX, ERR_DUPLICATED, W_INDEX);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
+    if (Array[0] != W_INDEX) {(this->currentLocationState = PATH, this->index--); return ;};
     if (Array.size() != 2 || Array[0] != W_INDEX) Error(2, ERR_SYNTAX, W_INDEX);
     this->servers[this->current].getLocations()[index].setIndexFile(Array[1]);
     this->currentLocationState = PATH;
 }
 
 int                                 ServerConfig::getPort() const                                       {    return this->port;}
+std::vector<int>                    ServerConfig::getPorts() const                                      {    return this->ports;};
 std::string                         ServerConfig::getHost() const                                       {    return this->host;}
 std::vector<LocationConfig>         &ServerConfig::getLocations()                                       {    return this->locations;}
 std::map<std::string, std::string>  ServerConfig::getErrorPages() const                                 {    return this->errorPages;}
@@ -336,6 +346,7 @@ bool                                LocationConfig::getDirectoryListing() const 
 
 
 void                                ServerConfig::setPort(int port)                                     {    this->port = port;}
+void                                ServerConfig::setPorts(int port)                                    {    this->ports.push_back(port);}
 void                                ServerConfig::setHost(std::string &host)                            {    this->host = host;}
 void                                ServerConfig::setLocations(LocationConfig location)                 {    this->locations.push_back(location);}
 void                                ServerConfig::setClientMaxBodySize(std::string &size)               {    this->clientMaxBodySize = size;}
