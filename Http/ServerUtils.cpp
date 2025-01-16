@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/14 21:23:49 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 03:24:11 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,27 +32,29 @@ File_Type ServerUtils::checkResource(const std::string &fullPath)
 
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
-    ifstream file(filePath, ios::in | ios::binary);
+    ifstream file(filePath.c_str(), ios::in | ios::binary);
     if (!file.is_open())
         return ServerUtils::ressourceToResponse(generateErrorPage(NOT_FOUND), NOT_FOUND);
 
     stringstream buffer;
     buffer << file.rdbuf();
     file.close();
-    // cout << "BUFFER: \n" << buffer.str() << endl;
-    return ServerUtils::ressourceToResponse(buffer.str(), code);
+    ResponseInfos response ;
+    response = ServerUtils::ressourceToResponse(buffer.str(), code);
+    if (filePath.find_last_of('.') != string::npos)
+    {
+        string ext = filePath.substr(filePath.find_last_of('.'));
+        response.headers["Content-Type"] = getMimeType(ext);
+    }
+    return response;
 }
 
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
-
-    cout << "redirect path : " << ressource.redirect << endl;
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
+    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || ressource.redirect.empty()) // ressource redirection should change it to != empty
     {
-        cout << "Redirection to " << ressource.redirect << endl;
         string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
-        cout << "reddirect url is : " << redirectUrl << endl;
-        return  handleRedirect(redirectUrl, REDIRECTED);
+        return handleRedirect(redirectUrl, REDIRECTED);
     }
     if (!ressource.indexFile.empty())
     {
@@ -70,7 +72,6 @@ ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
     if (ressource.autoindex)
         return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
     return ServerUtils::serveFile(generateErrorPage(FORBIDEN), FORBIDEN);
-    
 }
 
 ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
@@ -82,7 +83,7 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
     infos.body = redirectResponse.str();
     infos.headers["Location"] = redirectUrl;
     infos.status = statusCode;
-    infos.statusMessage = "Moved permanentely";
+    infos.statusMessage = "Moved permanently";
 
     return infos;
 }
@@ -90,7 +91,6 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
 ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
 {
 
-    cout << "Im here and here is the path : " << dirPath << endl;
     DIR *dir = opendir(dirPath.c_str());
     if (!dir)
     {
@@ -102,44 +102,67 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
 
     dirContent << "<html><body><h1>Directory Listing for " << dirPath << "</h1><ul>";
 
-    while ((entry = readdir(dir)) != nullptr)
-    {
-        // Skip . and .. directories
-        // if (string(entry->d_name) == "." || string(entry->d_name) == "..")
-        //     continue;
-
+    while ((entry = readdir(dir)) != NULL)
         dirContent << "<li><a href=\"" << entry->d_name << "\">" << entry->d_name << "</a></li>";
-    }
 
     dirContent << "</ul></body></html>";
     closedir(dir);
     return ressourceToResponse(dirContent.str(), OK);
 }
 
-std::string ServerUtils::getMimeType(const std::string &filePath)
+string ServerUtils::getFileExtention(const string type)
 {
-    std::map<std::string, std::string> mimeTypes = {
-        {".html", "text/html"},
-        {".htm", "text/html"},
-        {".css", "text/css"},
-        {".js", "application/javascript"},
-        {".png", "image/png"},
-        {".jpg", "image/jpeg"},
-        {".jpeg", "image/jpeg"},
-        {".gif", "image/gif"},
-        {".svg", "image/svg+xml"},
-        {".ico", "image/x-icon"},
-        {".mp3", "audio/mpeg"},
-        {".wav", "audio/wav"},
-        {".ogg", "audio/ogg"},
-        {".mp4", "video/mp4"},
-        {".webm", "video/webm"},
-        {".txt", "text/plain"},
-        {".json", "application/json"},
-        {".xml", "application/xml"},
-        {".pdf", "application/pdf"},
-        {".zip", "application/zip"},
-    };
+    std::map<std::string, std::string> mimeTypes;
+    mimeTypes["text/html"] = ".html";
+    mimeTypes["text/html"] = ".htm";
+    mimeTypes["text/css"] = ".css";
+    mimeTypes["application/javascript"] = ".js";
+    mimeTypes["image/png"] = ".png";
+    mimeTypes["image/jpeg"] = ".jpg";
+    mimeTypes["image/jpeg"] = ".jpeg";
+    mimeTypes["image/gif"] = ".gif";
+    mimeTypes["image/svg+xml"] = ".svg";
+    mimeTypes["image/x-icon"] = ".ico";
+    mimeTypes["audio/mpeg"] = ".mp3";
+    mimeTypes["audio/wav"] = ".wav";
+    mimeTypes["audio/ogg"] = ".ogg";
+    mimeTypes["video/mp4"] = ".mp4";
+    mimeTypes["video/webm"] = ".webm";
+    mimeTypes["text/plain"] = ".txt";
+    mimeTypes["application/json"] = ".json";
+    mimeTypes["application/xml"] = ".xml";
+    mimeTypes["application/pdf"] = ".pdf";
+    mimeTypes["application/zip"] = ".zip";
+
+    if (mimeTypes.find(type) != mimeTypes.end())
+        return mimeTypes[type];
+    else
+        return ".txt";
+}
+
+string ServerUtils::getMimeType(const std::string &filePath)
+{
+    std::map<std::string, std::string> mimeTypes;
+    mimeTypes[".html"] = "text/html";
+    mimeTypes[".htm"] = "text/html";
+    mimeTypes[".css"] = "text/css";
+    mimeTypes[".js"] = "application/javascript";
+    mimeTypes[".png"] = "image/png";
+    mimeTypes[".jpg"] = "image/jpeg";
+    mimeTypes[".jpeg"] = "image/jpeg";
+    mimeTypes[".gif"] = "image/gif";
+    mimeTypes[".svg"] = "image/svg+xml";
+    mimeTypes[".ico"] = "image/x-icon";
+    mimeTypes[".mp3"] = "audio/mpeg";
+    mimeTypes[".wav"] = "audio/wav";
+    mimeTypes[".ogg"] = "audio/ogg";
+    mimeTypes[".mp4"] = "video/mp4";
+    mimeTypes[".webm"] = "video/webm";
+    mimeTypes[".txt"] = "text/plain";
+    mimeTypes[".json"] = "application/json";
+    mimeTypes[".xml"] = "application/xml";
+    mimeTypes[".pdf"] = "application/pdf";
+    mimeTypes[".zip"] = "application/zip";
 
     size_t extPos = filePath.find_last_of('.');
     if (extPos != std::string::npos)
@@ -159,7 +182,9 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
     response_infos.body = ressource;
     response_infos.status = code;
     response_infos.statusMessage = Request::generateStatusMsg(code);
-    response_infos.headers["Content-Length"] = to_string(ressource.length());
+    stringstream ss;
+    ss << ressource.length();
+    response_infos.headers["Content-Length"] = ss.str();
 
     return response_infos;
 }
@@ -189,7 +214,7 @@ bool ServerUtils::isMethodAllowed(const std::string &method, const std::vector<s
 string ServerUtils::generateUniqueString()
 {
     stringstream ss;
-    ss << hex << time(nullptr);
+    ss << hex << time(NULL);
     return ss.str();
 }
 
@@ -199,10 +224,13 @@ ostream &operator<<(ostream &os, const ResponseInfos &response)
        << response.status << " " << response.statusMessage << endl;
     os << "Headers: \n"
        << endl;
-    for (const auto &header : response.headers)
+    map<string, string>::const_iterator it = response.headers.begin();
+    while (it != response.headers.end())
     {
-        os << header.first << ": " << header.second << endl;
+        os << it->first << ": " << it->second << endl;
+        it++;
     }
+
     os << "Body: \n"
        << endl;
     os << response.body << endl;
