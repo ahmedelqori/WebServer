@@ -20,6 +20,7 @@ public:
     static File_Type checkResource(const std::string &fullPath);
     static ResponseInfos serverRootOrRedirect(RessourceInfo ressource);
     static string generateErrorPage(int statusCode);
+    static string getFileExtention(const string type);
     static ResponseInfos ressourceToResponse(string ressource,int statusCode);
     static bool isMethodAllowed(const std::string &method, const std::vector<std::string> &allowMethods);
     static ResponseInfos serveFile(const std::string& filePath,int code);

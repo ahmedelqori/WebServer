@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/15 23:42:36 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 00:59:16 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,14 +37,14 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     // Set up response
     response.setStatus(response_info.status, response_info.statusMessage);
-    map<string,string>::const_iterator head = response_info.headers.begin();
+    map<string, string>::const_iterator head = response_info.headers.begin();
     while (head != response_info.headers.end())
     {
         cout << "header-> " << head->first << " : " << head->second << endl;
-        response.addHeader(head->first,head->second);
+        response.addHeader(head->first, head->second);
         head++;
     }
-    
+
     response.setBody(response_info.body);
 
     string response_str = response.getResponse();
@@ -89,6 +89,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
             if (request.getMethod() == POST &&
                 request.hasHeader("transfer-encoding") &&
+                request.hasHeader("content-type") &&
                 request.getHeader("transfer-encoding") == "chunked")
             {
 
@@ -96,7 +97,9 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                 ChunkedUploadState state;
                 state.headers_parsed = true;
                 state.content_remaining = 0;
-                state.upload_path = "uploads/" + ServerUtils::generateUniqueString();
+
+    
+                state.upload_path = "uploads/" + ServerUtils::generateUniqueString() + ServerUtils::getFileExtention(request.getHeader("content-type"));
                 state.output_file.open(state.upload_path.c_str(), std::ios::binary);
                 cout << "FILE OPENED " << endl;
 
@@ -186,7 +189,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
-     cout << "LOCATION FOUND  000" << bestMatch.getPath() << endl;
+    cout << "LOCATION FOUND  000" << bestMatch.getPath() << endl;
     if (!matchLocation(bestMatch, url, request))
     {
         // cout << "Location not found" << endl;
@@ -207,7 +210,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.autoindex = bestMatch.getDirectoryListing();
     ressource.indexFile = bestMatch.getIndexFile();
     ressource.redirect = bestMatch.getRedirectionPath();
-    cout << ressource.redirect << "   hello " << endl; 
+    cout << ressource.redirect << "   hello " << endl;
     ressource.path = fullPath;
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
@@ -263,7 +266,7 @@ static ServerConfig getServer(ConfigParser configParser, std::string host)
     int i = INDEX;
     while (++i < currentServers.size())
     {
-        stringstream server(currentServers[i].getHost() ,ios_base::app | ios_base::out); 
+        stringstream server(currentServers[i].getHost(), ios_base::app | ios_base::out);
         server << ':';
         server << currentServers[i].getPort();
         cout << "server name: " << server.str() << endl;
@@ -336,7 +339,6 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
         size_t pos = state.partial_request.find("\r\n");
         if (pos == string::npos)
         {
-            cout << "Need more data" << endl;
             return; // Need more data
         }
 

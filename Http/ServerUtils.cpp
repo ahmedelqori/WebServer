@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/15 20:25:48 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 00:58:25 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,7 +116,37 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
     return ressourceToResponse(dirContent.str(), OK);
 }
 
-std::string ServerUtils::getMimeType(const std::string &filePath)
+string ServerUtils::getFileExtention(const string type)
+{
+    std::map<std::string, std::string> mimeTypes;
+    mimeTypes["text/html"] = ".html";
+    mimeTypes["text/html"] = ".htm";
+    mimeTypes["text/css"] = ".css";
+    mimeTypes["application/javascript"] = ".js";
+    mimeTypes["image/png"] = ".png";
+    mimeTypes["image/jpeg"] = ".jpg";
+    mimeTypes["image/jpeg"] = ".jpeg";
+    mimeTypes["image/gif"] = ".gif";
+    mimeTypes["image/svg+xml"] = ".svg";
+    mimeTypes["image/x-icon"] = ".ico";
+    mimeTypes["audio/mpeg"] = ".mp3";
+    mimeTypes["audio/wav"] = ".wav";
+    mimeTypes["audio/ogg"] = ".ogg";
+    mimeTypes["video/mp4"] = ".mp4";
+    mimeTypes["video/webm"] = ".webm";
+    mimeTypes["text/plain"] = ".txt";
+    mimeTypes["application/json"] = ".json";
+    mimeTypes["application/xml"] = ".xml";
+    mimeTypes["application/pdf"] = ".pdf";
+    mimeTypes["application/zip"] = ".zip";
+
+    if (mimeTypes.find(type) != mimeTypes.end())
+        return mimeTypes[type];
+    else
+        return ".txt";
+}
+
+string ServerUtils::getMimeType(const std::string &filePath)
 {
     std::map<std::string, std::string> mimeTypes;
     mimeTypes[".html"] = "text/html";
