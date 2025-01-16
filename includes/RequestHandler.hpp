@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/16 00:32:24 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 04:51:48 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ public:
     bool headers_parsed;
     size_t content_remaining;
     string upload_path;
+    size_t total_size;
     ofstream output_file;  // We keep the ofstream, but only open it when needed
 
     // Constructor
@@ -114,10 +115,13 @@ public:
     ConfigParser server_config;
 
     void handleRequest(int client_sockfd, string req, int epoll_fd);
+    bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
     ResponseInfos handleGet(const Request &request);
     ResponseInfos handlePost(const Request &request);
+    ResponseInfos processUpload(Request request, string uploadPath);
     void cleanupConnection(int epoll_fd, int fd);
+    ResponseInfos uploadFile(Request request);
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
     ResponseInfos handleDelete(const Request &request);
     void modifyEpollEvent(int epoll_fd, int fd, uint32_t events);

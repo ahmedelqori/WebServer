@@ -16,6 +16,7 @@ using namespace std;
 #define URI_TOO_LONG 414
 #define BAD_GATEWAY 502
 #define VERSION_NOT_SUPPORTED 505
+#define PAYLOAD_TOO_LARGE 413
 
 
 #define GET "GET"

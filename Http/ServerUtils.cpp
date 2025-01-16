@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/16 00:58:25 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 03:24:11 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,20 +39,22 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
     stringstream buffer;
     buffer << file.rdbuf();
     file.close();
-    // cout << "BUFFER: \n" << buffer.str() << endl;
-    return ServerUtils::ressourceToResponse(buffer.str(), code);
+    ResponseInfos response ;
+    response = ServerUtils::ressourceToResponse(buffer.str(), code);
+    if (filePath.find_last_of('.') != string::npos)
+    {
+        string ext = filePath.substr(filePath.find_last_of('.'));
+        response.headers["Content-Type"] = getMimeType(ext);
+    }
+    return response;
 }
 
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
-
-    cout << "redirect path : " << ressource.redirect << endl;
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
+    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || ressource.redirect.empty()) // ressource redirection should change it to != empty
     {
-        cout << "Redirection to " << ressource.redirect << endl;
         string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
-        cout << "reddirect url is : " << redirectUrl << endl;
-        return  handleRedirect(redirectUrl, REDIRECTED);
+        return handleRedirect(redirectUrl, REDIRECTED);
     }
     if (!ressource.indexFile.empty())
     {
@@ -70,7 +72,6 @@ ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
     if (ressource.autoindex)
         return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
     return ServerUtils::serveFile(generateErrorPage(FORBIDEN), FORBIDEN);
-    
 }
 
 ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
@@ -82,7 +83,7 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
     infos.body = redirectResponse.str();
     infos.headers["Location"] = redirectUrl;
     infos.status = statusCode;
-    infos.statusMessage = "Moved permanentely";
+    infos.statusMessage = "Moved permanently";
 
     return infos;
 }
@@ -90,7 +91,6 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
 ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
 {
 
-    cout << "Im here and here is the path : " << dirPath << endl;
     DIR *dir = opendir(dirPath.c_str());
     if (!dir)
     {
@@ -103,13 +103,7 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
     dirContent << "<html><body><h1>Directory Listing for " << dirPath << "</h1><ul>";
 
     while ((entry = readdir(dir)) != NULL)
-    {
-        // Skip . and .. directories
-        // if (string(entry->d_name) == "." || string(entry->d_name) == "..")
-        //     continue;
-
         dirContent << "<li><a href=\"" << entry->d_name << "\">" << entry->d_name << "</a></li>";
-    }
 
     dirContent << "</ul></body></html>";
     closedir(dir);
@@ -230,13 +224,13 @@ ostream &operator<<(ostream &os, const ResponseInfos &response)
        << response.status << " " << response.statusMessage << endl;
     os << "Headers: \n"
        << endl;
-    map<string,string>::const_iterator it = response.headers.begin();
+    map<string, string>::const_iterator it = response.headers.begin();
     while (it != response.headers.end())
     {
-       os << it->first << ": " << it->second << endl;
-       it++;
+        os << it->first << ": " << it->second << endl;
+        it++;
     }
-   
+
     os << "Body: \n"
        << endl;
     os << response.body << endl;

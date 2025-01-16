@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/16 00:51:53 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 05:01:26 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,7 +107,7 @@ void Server::acceptConnection(int index)
         Error(2, "Error Server:: ", "accept");
 
     struct epoll_event event;
-    event.events = EPOLLIN; //| EPOLLET; // I comment EPOLLET , cause I faced an issue when uploading chunked data. read the manual to know about it :)
+    event.events = EPOLLIN; //| EPOLLET; // I comment EPOLLET , cause I faced an issue when uploading chunked data. read the manual to know about it :).
     event.data.fd = acceptFD;
     if (epoll_ctl(epollFD, EPOLL_CTL_ADD, acceptFD, &event) == -1)
     {
@@ -139,10 +139,7 @@ void Server::processData(int index)
     {
         this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
     }
-    // std::cout << "Received: " << buffer << std::endl;
-    // std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
-    // if (send(events[index].data.fd, response.c_str(), response.size(), 0) == -1) Error(2, "Error Server:: ", "send");
-    // close(events[index].data.fd);
+
 }
 
 void Server::acceptAndAnswer(int index)
