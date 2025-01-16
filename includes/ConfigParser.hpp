@@ -93,6 +93,7 @@ class ServerConfig
         int                                     port;
         std::string                             clientMaxBodySize;
         std::string                             host;
+        std::vector<int>                        ports;
         std::vector<std::string>                serverNames;
         std::vector<LocationConfig>             locations;
         std::map<std::string, std::string>      errorPages;
@@ -101,6 +102,7 @@ class ServerConfig
 
         int                                     locationIndex;
         int                                     getPort() const;
+        std::vector<int>                        getPorts() const;
         std::string                             getClientMaxBodySize() const;
         std::string                             getHost() const;
         std::vector<std::string>                getServerNames() const;
@@ -108,6 +110,7 @@ class ServerConfig
         std::map<std::string, std::string>      getErrorPages() const;
 
         void                                    setPort(int port);
+        void                                    setPorts(int port);
         void                                    setHost(std::string &host);
         void                                    setClientMaxBodySize(std::string &size);
         void                                    setServerNames(std::string &server_name);

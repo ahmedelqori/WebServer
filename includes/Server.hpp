@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/14 00:50:20 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/15 22:27:13 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,7 @@ class  Server
         void    start();
         void    init();
         void    createLinkedListOfAddr();
+        void    CreateAddrOfEachPort(int serverIndex);
         void    createSockets();
         void    bindSockets();
         void    listenForConnection();

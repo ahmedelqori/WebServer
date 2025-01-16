@@ -16,20 +16,29 @@ Server::Server() : serverIndex(INDEX)
 {
 }
 
+void Server::CreateAddrOfEachPort(int serverIndex)
+{
+    static int  indexRes  = 0; 
+    int         index     = INDEX;
+
+    while (++index < this->configFile.servers[serverIndex].getPorts().size())
+    {
+        addrinfo *res = NULL;
+        this->res.push_back(res);
+        if (getaddrinfo(this->configFile.servers[serverIndex].getHost().c_str(),
+                        itoa(this->configFile.servers[serverIndex].getPorts()[index]).c_str(),
+                        &this->hints,
+                        &this->res[indexRes++]) != 0)
+            throw std::runtime_error("Error in getaddre info");
+    }
+}
+
 void Server::createLinkedListOfAddr()
 {
     int index = INDEX;
 
     while (++index < this->configFile.servers.size())
-    {
-        addrinfo *res = NULL;
-        this->res.push_back(res);
-        if (getaddrinfo(this->configFile.servers[index].getHost().c_str(),
-                        itoa(this->configFile.servers[index].getPort()).c_str(),
-                        &this->hints,
-                        &this->res[index]) != 0)
-            throw std::runtime_error("Error in getaddre info");
-    }
+        this->CreateAddrOfEachPort(index);
 }
 
 void Server::createSockets()
@@ -38,7 +47,7 @@ void Server::createSockets()
     int sockFD = INDEX;
     int opt = 1;
 
-    while (++index < this->configFile.servers.size())
+    while (++index < this->res.size())
     {
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype, this->res[index]->ai_protocol);
         if (sockFD == -1)
