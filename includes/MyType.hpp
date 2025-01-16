@@ -17,7 +17,7 @@ using namespace std;
 #define BAD_GATEWAY 502
 #define VERSION_NOT_SUPPORTED 505
 #define PAYLOAD_TOO_LARGE 413
-
+#define NO_CONTENT 204
 
 #define GET "GET"
 #define POST "POST"

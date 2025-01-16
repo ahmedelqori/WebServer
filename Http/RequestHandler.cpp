@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/16 04:58:34 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/16 06:52:05 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,9 +146,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
     catch (exception &e)
     {
-        cerr << "Unexpected error: " << e.what() << endl;
-
-        // Handle unexpected errors similarly to known error codes
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(INTERNAL_SERVER_ERROR),
             INTERNAL_SERVER_ERROR);
@@ -178,7 +175,6 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     {
         string f_path = "www" + url;
         ressource.autoindex = false;
-        // ressource.indexFile = bestMatch.getIndexFile();
         ressource.redirect = "";
         ressource.path = f_path;
         ressource.root = "www";
@@ -193,10 +189,9 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.path = fullPath;
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
-    if (ServerUtils::isMethodAllowed(request.getMethod(), bestMatch.getMethods()))
-        return serveRessourceOrFail(ressource);
-    else
+    if (!ServerUtils::isMethodAllowed(request.getMethod(), bestMatch.getMethods()))
         return ServerUtils::ressourceToResponse(Request::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
+    return serveRessourceOrFail(ressource);
 }
 
 ResponseInfos RequestHandler::handlePost(const Request &request)
@@ -211,46 +206,116 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
     RessourceInfo ressource;
     if (!matchLocation(bestMatch, url, request))
         return uploadFile(request);
-    // cout << "url of uplaod file" << bestMatch.getRoot() + url << endl;
+    if (!ServerUtils::isMethodAllowed(POST, bestMatch.getMethods()))
+        return ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(NOT_ALLOWED),
+            NOT_ALLOWED);
     return processUpload(request, bestMatch.getRoot() + url);
+}
+
+static ResponseInfos deleteDir(const string path)
+{
+    DIR *dir = opendir(path.c_str());
+    if (!dir)
+        return ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(FORBIDEN),
+            FORBIDEN);
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+        {
+            string fullPath = path + "/" + entry->d_name;
+            struct stat statbuf;
+            if (stat(fullPath.c_str(), &statbuf) == -1) {
+                closedir(dir);
+                return ServerUtils::ressourceToResponse(
+                    ServerUtils::generateErrorPage(FORBIDEN),
+                    FORBIDEN);
+            }
+            
+            if (S_ISDIR(statbuf.st_mode)) {
+                ResponseInfos resp = deleteDir(fullPath);
+                if (resp.status != NO_CONTENT) {
+                    closedir(dir);
+                    return resp;
+                }
+            } else {
+                if (remove(fullPath.c_str()) != 0) {
+                    closedir(dir);
+                    return ServerUtils::ressourceToResponse(
+                        ServerUtils::generateErrorPage(FORBIDEN),
+                        FORBIDEN);
+                }
+            }
+        }
+    }
+    closedir(dir);
+    if (rmdir(path.c_str()) == 0)
+        return ServerUtils::ressourceToResponse("", NO_CONTENT);
+    return ServerUtils::ressourceToResponse(
+        ServerUtils::generateErrorPage(FORBIDEN),
+        FORBIDEN);
+}
+
+static ResponseInfos deleteOrFail(const string path)
+{
+    switch (ServerUtils::checkResource(path))
+    {
+
+    case DIRECTORY:
+        return deleteDir(path);
+    case REGULAR:
+        if (remove(path.c_str()) == 0)
+            return ServerUtils::ressourceToResponse("", NO_CONTENT);
+        return ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(FORBIDEN),
+            FORBIDEN);
+        break;
+    case NOT_EXIST:
+        return ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(NOT_FOUND),
+            NOT_FOUND);
+        break;
+    default:
+        return ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(INTERNAL_SERVER_ERROR),
+            INTERNAL_SERVER_ERROR);
+        break;
+    }
+    return ServerUtils::ressourceToResponse(
+        ServerUtils::generateErrorPage(NOT_FOUND),
+        NOT_FOUND);
 }
 
 ResponseInfos RequestHandler::handleDelete(const Request &request)
 {
-    // map<string, Location> locs = server_config.getLocations();
-    // string url = request.getDecodedPath();
 
-    // Location bestMatch;
-    // size_t bestMatchLength = 0;
-    // bool found = false;
+    string path = "www" + request.getDecodedPath();
+    LocationConfig bestMatch;
 
-    // for (const auto &loc : locs)
-    // {
-    //     const string &locationPath = loc.first;
-    //     if (url.find(locationPath) == 0 && (url == locationPath || url[locationPath.length()] == '/'))
-    //     {
-    //         if (locationPath.length() > bestMatchLength)
-    //         {
-    //             found = true;
-    //             bestMatch = loc.second;
-    //             bestMatchLength = locationPath.length();
-    //         }
-    //     }
-    // }
+    if (path == "www/" || path == "www")
+        return ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(FORBIDEN),
+            FORBIDEN);
 
-    // if (found)
-    // {
-    //     return ServerUtils::ressourceToResponse("<html><body><h1>DELETE Operation Successful on " + bestMatch.root + "</h1></body></html>", CREATED);
-    // }
-
-    return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
+    if (matchLocation(bestMatch, request.getDecodedPath(), request))
+    {
+        if (!ServerUtils::isMethodAllowed(DELETE, bestMatch.getMethods()))
+            return ServerUtils::ressourceToResponse(
+                ServerUtils::generateErrorPage(NOT_ALLOWED),
+                NOT_ALLOWED);
+        return deleteOrFail(bestMatch.getRoot() + request.getDecodedPath());
+    }
+    return ServerUtils::ressourceToResponse(
+        ServerUtils::generateErrorPage(FORBIDEN),
+        FORBIDEN);
 }
 
 static ServerConfig getServer(ConfigParser configParser, std::string host)
 {
 
     std::vector<ServerConfig> currentServers = configParser.servers;
-    // cout << "Hsot : " << host << endl;
     int i = INDEX;
     while (++i < currentServers.size())
     {
@@ -409,9 +474,7 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
         size_t chunk_total_size = chunk_header_size + chunk_size + 2; // +2 for trailing \r\n
 
         if (state.partial_request.length() < chunk_total_size)
-        {
             return; // Need more data
-        }
 
         // 4. Process chunk
         if (chunk_size == 0)
@@ -431,13 +494,13 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 
         // Write chunk data
         // Check max body size
-        string maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
-        state.total_size += chunk_size;
-        if (state.total_size > strtol(maxBodySize.c_str(), NULL, 10))
-        {
-            state.total_size = 0;
-            throw PAYLOAD_TOO_LARGE;
-        }
+        // string maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
+        // state.total_size += chunk_size;
+        // if (state.total_size > strtol(maxBodySize.c_str(), NULL, 10))
+        // {
+        //     state.total_size = 0;
+        //     throw PAYLOAD_TOO_LARGE;
+        // }
 
         const char *chunk_data = state.partial_request.data() + chunk_header_size;
         state.output_file.write(chunk_data, chunk_size);
