@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/15 22:21:32 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/17 16:07:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,13 +197,18 @@ void    ConfigParser::handleErrorFileState()
 void    ConfigParser::handleClientMaxBodySizeState()
 {
     std::vector<std::string> clientMaxBodySize;
-    
-    if (!this->servers[this->current].getClientMaxBodySize().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_CLIENT_MAX_BODY_SIZE);
+    std::vector<std::string> Array;
+    unsigned long long       res;
+    std::string              tmp;
+
+    if (this->servers[this->current].getClientMaxBodySize()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_CLIENT_MAX_BODY_SIZE);
     clientMaxBodySize = splitString(this->fileContent[this->index++], WHITE_SPACES);
     if (clientMaxBodySize[0] != W_CLIENT_MAX_BODY_SIZE || clientMaxBodySize.size() != 2)
         Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
     if (is_valid_size(clientMaxBodySize[1], INDEX) == false) Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
-    this->servers[this->current].setClientMaxBodySize(clientMaxBodySize[1]);
+    (tmp = clientMaxBodySize[1][clientMaxBodySize[1].size() - 1], clientMaxBodySize[1][clientMaxBodySize[1].size() - 1] = ',', clientMaxBodySize[1] += tmp);
+    (Array = splitString(clientMaxBodySize[1], ","), res = (unsigned long long)atoi(Array[0].c_str()) * parse_size(Array[1]));
+    this->servers[this->current].setClientMaxBodySize(res);
     this->currentServerState = LOCATIONS; 
 }
 
@@ -334,7 +339,7 @@ std::string                         ServerConfig::getHost() const               
 std::vector<LocationConfig>         &ServerConfig::getLocations()                                       {    return this->locations;}
 std::map<std::string, std::string>  ServerConfig::getErrorPages() const                                 {    return this->errorPages;}
 std::vector<std::string>            ServerConfig::getServerNames() const                                {    return this->serverNames;}
-std::string                         ServerConfig::getClientMaxBodySize() const                          {    return this->clientMaxBodySize; }
+unsigned long long                  ServerConfig::getClientMaxBodySize() const                          {    return this->clientMaxBodySize; }
             
 std::string                         LocationConfig::getPath() const                                     {    return this->path;}
 std::string                         LocationConfig::getRoot() const                                     {    return this->root;}
@@ -349,7 +354,7 @@ void                                ServerConfig::setPort(int port)             
 void                                ServerConfig::setPorts(int port)                                    {    this->ports.push_back(port);}
 void                                ServerConfig::setHost(std::string &host)                            {    this->host = host;}
 void                                ServerConfig::setLocations(LocationConfig location)                 {    this->locations.push_back(location);}
-void                                ServerConfig::setClientMaxBodySize(std::string &size)               {    this->clientMaxBodySize = size;}
+void                                ServerConfig::setClientMaxBodySize(unsigned long long size)               {    this->clientMaxBodySize = size;}
 void                                ServerConfig::setServerNames(std::string &server_name)              {    this->serverNames.push_back(server_name);}
 void                                ServerConfig::setErrorPages(std::string &key, std::string &value)   {    this->errorPages.insert(std::make_pair(key, value));}
 
@@ -364,37 +369,37 @@ void                                LocationConfig::setRedirectionPath(std::stri
 
 /// Moment of the truth
 
-void        ConfigParser::printHttp()
-{
-    std::cout << "http\n";
-    int i = 0 ;
-    while (i < servers.size())
-    {
-        int index = -1;
-        std::cout << "Host: " << this->servers[i].getHost() << std::endl;
-        std::cout << "Port: " << this->servers[i].getPort() << std::endl;
-        while (++index < this->servers[i].getServerNames().size())
-            std::cout << "Servername => "<<this->servers[i].getServerNames()[index] << std::endl;
-        index = -1;
-        while (++index < this->servers[i].getErrorPages().size())
-            std::cout << "Code: " << this->servers[i].getErrorPages()["404"] << " File: "  << std::endl;
-        std::cout << "Client max body size: " << this->servers[i].getClientMaxBodySize() << std::endl;
+// void        ConfigParser::printHttp()
+// {
+//     std::cout << "http\n";
+//     int i = 0 ;
+//     while (i < servers.size())
+//     {
+//         int index = -1;
+//         std::cout << "Host: " << this->servers[i].getHost() << std::endl;
+//         std::cout << "Port: " << this->servers[i].getPort() << std::endl;
+//         while (++index < this->servers[i].getServerNames().size())
+//             std::cout << "Servername => "<<this->servers[i].getServerNames()[index] << std::endl;
+//         index = -1;
+//         while (++index < this->servers[i].getErrorPages().size())
+//             std::cout << "Code: " << this->servers[i].getErrorPages()["404"] << " File: "  << std::endl;
+//         std::cout << "Client max body size: " << this->servers[i].getClientMaxBodySize() << std::endl;
        
-        index = -1;
-        std::cout << this->servers[i].getLocations().size() << std::endl;
-        while (++index < this->servers[i].getLocations().size())
-        {
-            int j = -1;
-            std::cout << "location: " << this->servers[i].getLocations()[index].getPath() << std::endl;
-            while (++j < this->servers[i].getLocations()[index].getMethods().size())
-                std::cout << "\t" << this->servers[i].getLocations()[index].getMethods()[j] << "\t";
-            std::cout << "\nRoot: " << this->servers[i].getLocations()[index].getRoot();
-            std::cout << "\nRedirect: " << this->servers[i].getLocations()[index].getRedirectionCode() << "\t" << this->servers[i].getLocations()[index].getRedirectionPath() << std::endl;
-            std::cout << "\nauto-index: " << this->servers[i].getLocations()[index].getDirectoryListing();
-            std::cout << "\nIndexFile: " << this->servers[i].getLocations()[index].getIndexFile();
+//         index = -1;
+//         std::cout << this->servers[i].getLocations().size() << std::endl;
+//         while (++index < this->servers[i].getLocations().size())
+//         {
+//             int j = -1;
+//             std::cout << "location: " << this->servers[i].getLocations()[index].getPath() << std::endl;
+//             while (++j < this->servers[i].getLocations()[index].getMethods().size())
+//                 std::cout << "\t" << this->servers[i].getLocations()[index].getMethods()[j] << "\t";
+//             std::cout << "\nRoot: " << this->servers[i].getLocations()[index].getRoot();
+//             std::cout << "\nRedirect: " << this->servers[i].getLocations()[index].getRedirectionCode() << "\t" << this->servers[i].getLocations()[index].getRedirectionPath() << std::endl;
+//             std::cout << "\nauto-index: " << this->servers[i].getLocations()[index].getDirectoryListing();
+//             std::cout << "\nIndexFile: " << this->servers[i].getLocations()[index].getIndexFile();
            
-            std::cout << "\n =============== \n";  
-        }
-        i++;
-    }
-}
+//             std::cout << "\n =============== \n";  
+//         }
+//         i++;
+//     }
+// }

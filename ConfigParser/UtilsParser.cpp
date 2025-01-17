@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   UtilsParser.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:44:03 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/06 14:45:24 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/17 15:57:45 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -120,7 +120,7 @@ bool is_valid_size(std::string str, int index)
     str += tmp;
     Array = splitString(str, ",");
     if (Array.size() != 2) return false;
-    if ((Array[0] != itoa(atoi(Array[0].c_str()))) || (Array[1] != "K" && Array[1] != "M")) return false;
+    if ((Array[0] != itoa(atoi(Array[0].c_str()))) || (Array[1] != "B" && Array[1] != "K" && Array[1] != "M" && Array[1] != "G")) return false;
     return true;
 }
 
@@ -138,4 +138,12 @@ bool is_duplicated(std::vector<std::string> vec, std::string v, int index)
 {
     while (++index < vec.size()) if (vec[index] == v) return false;
     return true;
+}
+
+long parse_size(const std::string& str) {
+    if (str == BYTE) return 1;
+    if (str == KILO) return 1024;
+    if (str == MEGA) return 1024 * 1024;
+    if (str == GIGA) return 1024 * 1024 * 1024;
+    return 0;
 }
