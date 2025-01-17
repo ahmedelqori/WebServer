@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/16 05:01:26 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/17 16:11:57 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,10 +50,9 @@ void Server::createSockets()
     while (++index < this->res.size())
     {
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype, this->res[index]->ai_protocol);
-        if (sockFD == -1)
-            Error(2, "Error Server:: ", "sockets");
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-            Error(2, "Error Server:: ", "setsockopt");
+        if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(2, "Error Server:: ", "setsockopt");
+        if (fcntl(sockFD, F_SETFL, O_NONBLOCK) < 0) Error(2, "Error Server:: ", "fcntl - non-blocking");
         this->socketContainer.push_back(sockFD);
     }
 }
