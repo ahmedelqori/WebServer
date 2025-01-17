@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   UtlisParser.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2024/12/28 13:58:54 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/17 16:08:48 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <bits/stdc++.h>
 
+long                            parse_size(const std::string& str);
 std::string                     itoa(size_t n);
 std::string                     trim(const std::string& str);
 std::vector<std::string>        splitString(const std::string& input, const std::string& delimiters);
@@ -97,5 +98,10 @@ void                            Error(int count, ...);
 #define BOLDMAGENTA                 "\033[1m\033[35m"
 #define BOLDCYAN                    "\033[1m\033[36m"
 #define BOLDWHITE                   "\033[1m\033[37m"
+
+#define BYTE                        "B"
+#define KILO                        "K"
+#define MEGA                        "M"
+#define GIGA                        "G"
 
 #endif
