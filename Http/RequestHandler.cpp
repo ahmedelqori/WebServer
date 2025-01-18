@@ -6,11 +6,12 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/16 06:52:05 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/18 23:10:13 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/RequestHandler.hpp"
+#include "../includes/Cgi.hpp"
 
 RequestHandler::RequestHandler()
 {
@@ -171,6 +172,33 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
+     cout << "handle Get" << endl;
+    if (url.find_last_of(".php") != string::npos)
+    {
+        cout << "Im in cgi " << endl;
+        cout << request << endl;
+        try
+        {
+            CGI cgi;
+            ResponseInfos response;
+            cout << "test dsgsdgsdgsdgsdgdg : "<< url << endl;
+            response = cgi.execute(request, url);
+            response = cgi.parseOutput(cgi.getOutputPipe());
+            return response;
+        }
+        catch(CGIException &e)
+        {
+            std::cerr << "CGI: ERROR : " << e.what() << '\n';
+        }
+        catch(exception &e)
+        {
+            std::cerr << "CGI: ERROR : " << e.what() << '\n';
+        }
+    
+        // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
+    }
+
+    cout << "after handling cgi " << endl;
     if (!matchLocation(bestMatch, url, request))
     {
         string f_path = "www" + url;
@@ -204,6 +232,41 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
+
+    cout << "handle Post" << endl;
+    if (url.find_last_of(".php") != string::npos)
+    {
+        cout << "Im in cgi " << endl;
+        cout << request << endl;
+        try
+        {
+            CGI cgi;
+            ResponseInfos response;
+            cout << "test dsgsdgsdgsdgsdgdg : "<< url << endl;
+            response = cgi.execute(request, url);
+            response = cgi.parseOutput(cgi.getOutputPipe());
+            cout << "response: ..........................."<< endl;
+            cout << "response: " << response.status << endl;
+            cout << "response: " << response.statusMessage << endl;
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it) {
+                cout << "response header: " << it->first << ": " << it->second << endl;
+            }
+            cout << "response: " << response.body << endl;
+            
+            return response;
+        }
+        catch(CGIException &e)
+        {
+            std::cerr << "CGI: ERROR : " << e.what() << '\n';
+        }
+        catch(exception &e)
+        {
+            std::cerr << "CGI: ERROR : " << e.what() << '\n';
+        }
+    
+        // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
+    }
+    cout << "after handling post cgi " << endl;
     if (!matchLocation(bestMatch, url, request))
         return uploadFile(request);
     if (!ServerUtils::isMethodAllowed(POST, bestMatch.getMethods()))

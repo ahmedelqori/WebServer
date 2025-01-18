@@ -19,9 +19,21 @@ using namespace std;
 #define PAYLOAD_TOO_LARGE 413
 #define NO_CONTENT 204
 
+
+#define MSG_BAD_REQUEST "Bad Request"
+#define MSG_OK "OK"
+#define MSG_CREATED "Created"
+#define MSG_INTERNAL_SERVER_ERROR "Internal Server Error"
+#define MSG_FORBIDDEN "Forbidden"
+#define MSG_REDIRECTED "Redirected"
+#define MSG_NOT_ALLOWED "Method Not Allowed"
+#define MSG_NOT_FOUND "Not Found"
+
+
 #define GET "GET"
 #define POST "POST"
 #define DELETE "DELETE"
+
 
 enum File_Type
 {
@@ -66,9 +78,21 @@ struct ResponseInfos
 {
     int status;
     string statusMessage;
-    map<string,string> headers;
+    map<string, string> headers;
     string location;
     string body;
 
-    ResponseInfos() : status(OK), statusMessage("OK"),body("") {}
+    ResponseInfos() : status(OK), statusMessage(MSG_OK), body("") {}
+    ResponseInfos(int s, const string &sm, const string &b) : status(s), statusMessage(sm), body(b) {}
+    void setHeaders(const map<string, string> &h) { headers = h; }
+    void addHeader(const string &key, const string &value) {
+        headers[key] = value;
+    }
+    void setBody(const string &b) { body = b; }
+    int getStatus() const { return status; }
+    string getStatusMessage() const { return statusMessage; }
+    const map<string, string> &getHeaders() const { return headers; }
+    string getBody() const { return body; }
+    void setStatus(int s) { status = s; }
+    void setStatusMessage(const string &sm) { statusMessage = sm; }
 };
