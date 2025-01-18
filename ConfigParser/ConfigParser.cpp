@@ -201,7 +201,6 @@ void    ConfigParser::handleClientMaxBodySizeState()
     unsigned long long       res;
     std::string              tmp;
 
-    if (this->servers[this->current].getClientMaxBodySize()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_CLIENT_MAX_BODY_SIZE);
     clientMaxBodySize = splitString(this->fileContent[this->index++], WHITE_SPACES);
     if (clientMaxBodySize[0] != W_CLIENT_MAX_BODY_SIZE || clientMaxBodySize.size() != 2)
         Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
