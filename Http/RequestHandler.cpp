@@ -73,7 +73,7 @@ void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
     ev.data.fd = fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) == -1)
     {
-        perror("epoll_ctl mod");
+        Error(1, "epoll_ctl mod");
         throw INTERNAL_SERVER_ERROR;
     }
 }
@@ -168,6 +168,7 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
 
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
+    cout << "Get method process" << endl;
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
@@ -183,6 +184,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     }
 
     string fullPath = bestMatch.getRoot() + url;
+    cout << "full path " << fullPath << endl;
     ressource.autoindex = bestMatch.getDirectoryListing();
     ressource.indexFile = bestMatch.getIndexFile();
     ressource.redirect = bestMatch.getRedirectionPath();

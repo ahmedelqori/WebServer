@@ -32,6 +32,7 @@ File_Type ServerUtils::checkResource(const std::string &fullPath)
 
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
+  
     ifstream file(filePath.c_str(), ios::in | ios::binary);
     if (!file.is_open())
         return ServerUtils::ressourceToResponse(generateErrorPage(NOT_FOUND), NOT_FOUND);
@@ -51,24 +52,29 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || ressource.redirect.empty()) // ressource redirection should change it to != empty
+
+    cout << "Hello" << endl;
+    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty()) // ressource redirection should change it to != empty
     {
         string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
         return handleRedirect(redirectUrl, REDIRECTED);
     }
     if (!ressource.indexFile.empty())
     {
+        
         string indexPath;
         if (ressource.autoindex)
-            indexPath = ressource.root + "/" + ressource.url + '/' + ressource.indexFile;
-        else
             indexPath = ressource.root + "/" + ressource.indexFile;
+        else
+            indexPath = ressource.root + "/" + ressource.url + '/' + ressource.indexFile;
+            cout << "index is " << indexPath << endl;
         struct stat indexStat;
         if (stat(indexPath.c_str(), &indexStat) == 0)
         {
             return ServerUtils::serveFile(indexPath, OK);
         }
     }
+    cout << "Hi 0" << endl;
     if (ressource.autoindex)
         return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
     return ServerUtils::serveFile(generateErrorPage(FORBIDEN), FORBIDEN);
