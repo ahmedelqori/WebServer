@@ -95,4 +95,5 @@ struct ResponseInfos
     string getBody() const { return body; }
     void setStatus(int s) { status = s; }
     void setStatusMessage(const string &sm) { statusMessage = sm; }
+    void parseHeaders(const string &response);
 };
