@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/18 23:10:13 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/18 23:26:10 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,7 +74,7 @@ void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
     ev.data.fd = fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) == -1)
     {
-        Error(1, "epoll_ctl mod");
+        perror("epoll_ctl mod");
         throw INTERNAL_SERVER_ERROR;
     }
 }
@@ -169,7 +169,6 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
 
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
-    cout << "Get method process" << endl;
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
@@ -212,7 +211,6 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     }
 
     string fullPath = bestMatch.getRoot() + url;
-    cout << "full path " << fullPath << endl;
     ressource.autoindex = bestMatch.getDirectoryListing();
     ressource.indexFile = bestMatch.getIndexFile();
     ressource.redirect = bestMatch.getRedirectionPath();
