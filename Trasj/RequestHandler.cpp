@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/18 23:26:10 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/19 18:00:32 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,9 +154,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
 }
 
-ResponseInfos RequestHandler::processRequest(const Request &request)
+ResponseInfos RequestHandler::processRequest(int client_sockfd, Request request,int epoll_fd)
 {
-
     if (request.getMethod() == GET)
         return handleGet(request);
     else if (request.getMethod() == POST)
