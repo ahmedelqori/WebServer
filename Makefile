@@ -6,13 +6,13 @@
 #    By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/12/19 15:51:13 by ael-qori          #+#    #+#              #
-#    Updated: 2025/01/19 21:28:16 by ael-qori         ###   ########.fr        #
+#    Updated: 2025/01/19 21:28:45 by ael-qori         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
 CXX = c++
-CXXFLAGS = -fsanitize=address -g   #-std=c++98 #-Wall -Wextra -Werrore -pedantic
+CXXFLAGS = -fsanitize=address -g  -std=c++98 #-Wall -Wextra -Werrore -pedantic
 RM = rm -rf
 
 SRC = main.cpp ./ConfigParser/ConfigParser.cpp ./ConfigParser/UtilsParser.cpp ./Server/Server.cpp \
