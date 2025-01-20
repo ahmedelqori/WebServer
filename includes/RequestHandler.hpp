@@ -39,7 +39,7 @@ public:
     ofstream output_file;
 
     ChunkedUploadState()
-        : headers_parsed(false), content_remaining(0), output_file()
+        : headers_parsed(false), content_remaining(0), output_file(), total_size(0)
     {
     }
 
@@ -107,6 +107,7 @@ public:
     ResponseInfos handlePost(const Request &request);
     ResponseInfos processUpload(Request request, string uploadPath);
     void cleanupConnection(int epoll_fd, int fd);
+    void processPostData(int client_sockfd, const string &data, int epoll_fd);
     ResponseInfos uploadFile(Request request);
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
     ResponseInfos handleDelete(const Request &request);

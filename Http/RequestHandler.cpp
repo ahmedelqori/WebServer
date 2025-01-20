@@ -87,6 +87,11 @@ static bool isChunkedRequest(Request request)
             request.getHeader("transfer-encoding") == "chunked");
 }
 
+static bool isPostMethod(Request request)
+{
+    return (request.getMethod() == POST);
+}
+
 bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
@@ -119,6 +124,26 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                 chunked_uploads[client_sockfd] = state;
                 processChunkedData(client_sockfd, request.getBody(), epoll_fd);
             }
+            else if (isPostMethod(request))
+            {
+
+                cout << "IS POST METHOD " << endl;
+                ChunkedUploadState state;
+                state.headers_parsed = true;
+                state.content_remaining = 0;
+
+                state.upload_path = "www" + request.getDecodedPath() + ServerUtils::generateUniqueString() +
+                                    ServerUtils::getFileExtention(request.getHeader("content-type"));
+                state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+
+                if (!state.output_file.is_open())
+                {
+
+                    throw INTERNAL_SERVER_ERROR;
+                }
+                chunked_uploads[client_sockfd] = state;
+                processPostData(client_sockfd, request.getBody(), epoll_fd);
+            }
             else
             {
 
@@ -127,7 +152,12 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             }
         }
         else
-            processChunkedData(client_sockfd, req, epoll_fd);
+        {
+            if (isChunkedRequest(request))
+                processChunkedData(client_sockfd, req, epoll_fd);
+            else
+                processPostData(client_sockfd, req, epoll_fd);
+        }
     }
     catch (int code)
     {
@@ -159,15 +189,15 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
 ResponseInfos RequestHandler::processRequest(const Request &request)
 {
-
+    cout << "Process request opened " << endl;
     if (request.getMethod() == GET)
         return handleGet(request);
-    else if (request.getMethod() == POST)
-        return handlePost(request);
     else if (request.getMethod() == DELETE)
         return handleDelete(request);
     else
         return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_EXIST), NOT_EXIST);
+    // else if (request.getMethod() == POST)
+    //     return handlePost(request);
 }
 
 ResponseInfos RequestHandler::handleGet(const Request &request)
@@ -185,10 +215,11 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             ResponseInfos response;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
-            cout << "response: ..........................."<< endl;
+            cout << "response: ..........................." << endl;
             cout << "response: " << response.status << endl;
             cout << "response: " << response.statusMessage << endl;
-            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it) {
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+            {
                 cout << "response header: " << it->first << ": " << it->second << endl;
             }
             cout << "response: " << response.body << endl;
@@ -243,37 +274,37 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
     RessourceInfo ressource;
 
     cout << "handle Post" << endl;
-    if (url.find_last_of(".php") != string::npos)
-    {
-        cout << request << endl;
-        try
-        {
-            CGI cgi;
-            ResponseInfos response;
-            response = cgi.execute(request, url);
-            response = cgi.parseOutput(cgi.getOutputPipe());
-            cout << "response: ..........................." << endl;
-            cout << "response: " << response.status << endl;
-            cout << "response: " << response.statusMessage << endl;
-            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
-            {
-                cout << "response header: " << it->first << ": " << it->second << endl;
-            }
-            cout << "response: " << response.body << endl;
+    // if (url.find_last_of(".php") != string::npos)
+    // {
+    //     cout << request << endl;
+    //     try
+    //     {
+    //         CGI cgi;
+    //         ResponseInfos response;
+    //         response = cgi.execute(request, url);
+    //         response = cgi.parseOutput(cgi.getOutputPipe());
+    //         cout << "response: ..........................." << endl;
+    //         cout << "response: " << response.status << endl;
+    //         cout << "response: " << response.statusMessage << endl;
+    //         for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+    //         {
+    //             cout << "response header: " << it->first << ": " << it->second << endl;
+    //         }
+    //         cout << "response: " << response.body << endl;
 
-            return response;
-        }
-        catch (CGIException &e)
-        {
-            std::cerr << "CGI: ERROR : " << e.what() << '\n';
-        }
-        catch (exception &e)
-        {
-            std::cerr << "CGI: ERROR : " << e.what() << '\n';
-        }
+    //         return response;
+    //     }
+    //     catch (CGIException &e)
+    //     {
+    //         std::cerr << "CGI: ERROR : " << e.what() << '\n';
+    //     }
+    //     catch (exception &e)
+    //     {
+    //         std::cerr << "CGI: ERROR : " << e.what() << '\n';
+    //     }
 
-        // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
-    }
+    //     // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
+    // }
 
     if (!matchLocation(bestMatch, url, request))
         return uploadFile(request);
@@ -437,35 +468,44 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::processUpload(Request request, string uploadPath)
 {
-    if (!request.getBody().empty())
-    {
-        // string maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
 
-        // cout << "MAX BODY SIZE " << maxBodySize << endl;
+    cout << "process upload size : " << request.getBody().length() << endl;
+    // if (!request.getBody().empty())
+    // {
+    //     string filename = "www" + request.getDecodedPath() + ServerUtils::generateUniqueString() +
+    //                      ServerUtils::getFileExtention(request.getHeader("content-type"));
+    //     size_t contentLength = request.getHeader("content-length").empty() ? 0 : stoi(request.getHeader("content-length"));
 
-        // if (request.getBody().length() > strtol(maxBodySize.c_str(), NULL, 10))
-        // {
-        //     return ServerUtils::ressourceToResponse(
-        //         ServerUtils::generateErrorPage(PAYLOAD_TOO_LARGE),
-        //         PAYLOAD_TOO_LARGE);
-        // }
+    //     ofstream ofile(filename.c_str(), ios::out | ios::binary);
+    //     if (!ofile.is_open())
+    //         return ServerUtils::ressourceToResponse(
+    //             ServerUtils::generateErrorPage(INTERNAL_SERVER_ERROR),
+    //             INTERNAL_SERVER_ERROR);
 
-        string filename = "www" + request.getDecodedPath() + ServerUtils::generateUniqueString() +
-                          ServerUtils::getFileExtention(request.getHeader("content-type"));
+    //     // Write in chunks
+    //     const char* data = request.getBody().data();
+    //     const size_t chunkSize = 8192; // 8KB chunks
+    //     size_t remaining = contentLength > 0 ? contentLength : request.getBody().length();
+    //     size_t offset = 0;
 
-        ofstream ofile(filename.c_str(), ios::out | ios::binary);
-        if (!ofile.is_open())
-            return ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(INTERNAL_SERVER_ERROR),
-                INTERNAL_SERVER_ERROR);
+    //     while (remaining > 0) {
+    //         size_t writeSize = min(chunkSize, remaining);
+    //         ofile.write(data + offset, writeSize);
 
-        // ofile << request.getBody();
-        const char *data = request.getBody().data();
-        ofile.write(data, request.getBody().length());
-        ofile.close();
+    //         if (ofile.fail()) {
+    //             ofile.close();
+    //             return ServerUtils::ressourceToResponse(
+    //                 ServerUtils::generateErrorPage(INTERNAL_SERVER_ERROR),
+    //                 INTERNAL_SERVER_ERROR);
+    //         }
 
-        return ServerUtils::ressourceToResponse("", CREATED);
-    }
+    //         offset += writeSize;
+    //         remaining -= writeSize;
+    //     }
+
+    //     ofile.close();
+    //     return ServerUtils::ressourceToResponse("", CREATED);
+    // }
 
     return ServerUtils::ressourceToResponse(
         ServerUtils::generateErrorPage(BAD_REQUEST),
@@ -521,8 +561,16 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 void RequestHandler::processChunkedData(int client_sockfd, const string &data, int epoll_fd)
 {
 
-    cout << "Process chunked request started " << endl;
-    // exit(12);
+// Write chunk data
+        // Check max body size
+        // string maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
+        // state.total_size += chunk_size;
+        // if (state.total_size > strtol(maxBodySize.c_str(), NULL, 10))
+        // {
+        //     state.total_size = 0;
+        //     throw PAYLOAD_TOO_LARGE;
+        // }
+
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
 
@@ -574,21 +622,53 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
             }
         }
 
-        // Write chunk data
-        // Check max body size
-        // string maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
-        // state.total_size += chunk_size;
-        // if (state.total_size > strtol(maxBodySize.c_str(), NULL, 10))
-        // {
-        //     state.total_size = 0;
-        //     throw PAYLOAD_TOO_LARGE;
-        // }
+        
 
         const char *chunk_data = state.partial_request.data() + chunk_header_size;
         state.output_file.write(chunk_data, chunk_size);
 
         // Remove processed chunk
         state.partial_request = state.partial_request.substr(chunk_total_size);
+    }
+}
+
+void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
+{
+
+    ChunkedUploadState &state = chunked_uploads[client_sockfd];
+    state.partial_request += data;
+
+    size_t contentLength = request.getHeader("content-length").empty() ? 0 : stoi(request.getHeader("content-length"));
+
+    cout << "Total size " << state.total_size << " content length " << contentLength << endl;
+
+    if (state.total_size >= contentLength)
+    {
+        state.output_file.close();
+        chunked_uploads.erase(client_sockfd);
+        responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+    else
+    {
+        const char *post_data = state.partial_request.data();
+        state.output_file.write(post_data, state.partial_request.length());
+
+        state.total_size += state.partial_request.length();
+
+         cout << "Total size " << state.total_size << " content length " << contentLength << endl;
+
+        if (state.total_size >= contentLength)
+        {
+            state.output_file.close();
+            state.total_size = 0;
+            chunked_uploads.erase(client_sockfd);
+
+      
+            responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
+            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+        }
+        state.partial_request.clear();
     }
 }
 
