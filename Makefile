@@ -3,7 +3,7 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+         #
+#    By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/12/19 15:51:13 by ael-qori          #+#    #+#              #
 #    Updated: 2025/01/19 16:24:30 by aes-sarg         ###   ########.fr        #

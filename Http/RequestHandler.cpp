@@ -3,7 +3,7 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
 /*   Updated: 2025/01/19 18:18:35 by aes-sarg         ###   ########.fr       */
@@ -185,6 +185,14 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             ResponseInfos response;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
+            cout << "response: ..........................."<< endl;
+            cout << "response: " << response.status << endl;
+            cout << "response: " << response.statusMessage << endl;
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it) {
+                cout << "response header: " << it->first << ": " << it->second << endl;
+            }
+            cout << "response: " << response.body << endl;
+            cout << "get response" << endl;
             return response;
         }
         catch (CGIException &e)
