@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 21:33:11 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/19 18:18:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,12 +107,15 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                 state.headers_parsed = true;
                 state.content_remaining = 0;
 
-                state.upload_path = "uploads/" + ServerUtils::generateUniqueString() +
+                state.upload_path = "www" + request.getDecodedPath() + ServerUtils::generateUniqueString() +
                                     ServerUtils::getFileExtention(request.getHeader("content-type"));
                 state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                 if (!state.output_file.is_open())
+                {
+
                     throw INTERNAL_SERVER_ERROR;
+                }
                 chunked_uploads[client_sockfd] = state;
                 processChunkedData(client_sockfd, request.getBody(), epoll_fd);
             }
@@ -169,20 +172,17 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
 
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
-    cout << "Get method process" << endl;
+
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
-     cout << "handle Get" << endl;
-    if (url.find_last_of(".php") != string::npos)
+    if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
     {
-        cout << "Im in cgi " << endl;
         cout << request << endl;
         try
         {
             CGI cgi;
             ResponseInfos response;
-            cout << "test dsgsdgsdgsdgsdgdg : "<< url << endl;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
             cout << "response: ..........................."<< endl;
@@ -195,19 +195,18 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             cout << "get response" << endl;
             return response;
         }
-        catch(CGIException &e)
+        catch (CGIException &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-        catch(exception &e)
+        catch (exception &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-    
+
         // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
     }
 
-    cout << "after handling cgi " << endl;
     if (!matchLocation(bestMatch, url, request))
     {
         string f_path = "www" + url;
@@ -220,7 +219,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     }
 
     string fullPath = bestMatch.getRoot() + url;
-    cout << "full path " << fullPath << endl;
+
     ressource.autoindex = bestMatch.getDirectoryListing();
     ressource.indexFile = bestMatch.getIndexFile();
     ressource.redirect = bestMatch.getRedirectionPath();
@@ -246,37 +245,36 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
     cout << "handle Post" << endl;
     if (url.find_last_of(".php") != string::npos)
     {
-        cout << "Im in cgi " << endl;
         cout << request << endl;
         try
         {
             CGI cgi;
             ResponseInfos response;
-            cout << "test dsgsdgsdgsdgsdgdg : "<< url << endl;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
-            cout << "response: ..........................."<< endl;
+            cout << "response: ..........................." << endl;
             cout << "response: " << response.status << endl;
             cout << "response: " << response.statusMessage << endl;
-            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it) {
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+            {
                 cout << "response header: " << it->first << ": " << it->second << endl;
             }
             cout << "response: " << response.body << endl;
-            
+
             return response;
         }
-        catch(CGIException &e)
+        catch (CGIException &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-        catch(exception &e)
+        catch (exception &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-    
+
         // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
     }
-    cout << "after handling post cgi " << endl;
+
     if (!matchLocation(bestMatch, url, request))
         return uploadFile(request);
     if (!ServerUtils::isMethodAllowed(POST, bestMatch.getMethods()))
@@ -300,21 +298,27 @@ static ResponseInfos deleteDir(const string path)
         {
             string fullPath = path + "/" + entry->d_name;
             struct stat statbuf;
-            if (stat(fullPath.c_str(), &statbuf) == -1) {
+            if (stat(fullPath.c_str(), &statbuf) == -1)
+            {
                 closedir(dir);
                 return ServerUtils::ressourceToResponse(
                     ServerUtils::generateErrorPage(FORBIDEN),
                     FORBIDEN);
             }
-            
-            if (S_ISDIR(statbuf.st_mode)) {
+
+            if (S_ISDIR(statbuf.st_mode))
+            {
                 ResponseInfos resp = deleteDir(fullPath);
-                if (resp.status != NO_CONTENT) {
+                if (resp.status != NO_CONTENT)
+                {
                     closedir(dir);
                     return resp;
                 }
-            } else {
-                if (remove(fullPath.c_str()) != 0) {
+            }
+            else
+            {
+                if (remove(fullPath.c_str()) != 0)
+                {
                     closedir(dir);
                     return ServerUtils::ressourceToResponse(
                         ServerUtils::generateErrorPage(FORBIDEN),
@@ -446,7 +450,7 @@ ResponseInfos RequestHandler::processUpload(Request request, string uploadPath)
         //         PAYLOAD_TOO_LARGE);
         // }
 
-        string filename = ServerUtils::generateUniqueString() +
+        string filename = "www" + request.getDecodedPath() + ServerUtils::generateUniqueString() +
                           ServerUtils::getFileExtention(request.getHeader("content-type"));
 
         ofstream ofile(filename.c_str(), ios::out | ios::binary);
@@ -455,7 +459,9 @@ ResponseInfos RequestHandler::processUpload(Request request, string uploadPath)
                 ServerUtils::generateErrorPage(INTERNAL_SERVER_ERROR),
                 INTERNAL_SERVER_ERROR);
 
-        ofile << request.getBody();
+        // ofile << request.getBody();
+        const char *data = request.getBody().data();
+        ofile.write(data, request.getBody().length());
         ofile.close();
 
         return ServerUtils::ressourceToResponse("", CREATED);
@@ -514,6 +520,9 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 
 void RequestHandler::processChunkedData(int client_sockfd, const string &data, int epoll_fd)
 {
+
+    cout << "Process chunked request started " << endl;
+    // exit(12);
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
 
@@ -558,7 +567,7 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
                 // Valid end
                 state.output_file.close();
                 chunked_uploads.erase(client_sockfd);
-                state.total_size = 0;
+                // state.total_size = 0;
                 responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
                 modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
                 return;
