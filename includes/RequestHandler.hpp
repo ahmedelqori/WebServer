@@ -55,6 +55,7 @@ public:
         : partial_request(other.partial_request),
           headers_parsed(other.headers_parsed),
           content_remaining(other.content_remaining),
+          total_size(other.total_size),
           upload_path(other.upload_path)
     {
         if (other.output_file.is_open())
@@ -104,6 +105,7 @@ public:
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
     ResponseInfos handleGet(const Request &request);
+    void checkMaxBodySize();
     ResponseInfos handlePost(const Request &request);
     ResponseInfos processUpload(Request request, string uploadPath);
     void cleanupConnection(int epoll_fd, int fd);

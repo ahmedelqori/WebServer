@@ -36,7 +36,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
     Response response;
     ResponseInfos &response_info = responses_info[current_fd];
 
-    // Set up response
+    cout << "Response status: " << response_info.status << endl;
     response.setStatus(response_info.status, response_info.statusMessage);
     map<string, string>::const_iterator head = response_info.headers.begin();
     while (head != response_info.headers.end())
@@ -53,9 +53,11 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (bytes_written == -1)
     {
-
+        Error(1, "write Error");
         return;
     }
+
+    cout << "Bytes written: " << bytes_written << endl;
 
     if (static_cast<size_t>(bytes_written) < response_str.length())
     {
@@ -131,10 +133,12 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                 ChunkedUploadState state;
                 state.headers_parsed = true;
                 state.content_remaining = 0;
+                state.total_size = 0;
 
                 state.upload_path = "www" + request.getDecodedPath() + ServerUtils::generateUniqueString() +
                                     ServerUtils::getFileExtention(request.getHeader("content-type"));
                 state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+                
 
                 if (!state.output_file.is_open())
                 {
@@ -161,7 +165,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
     catch (int code)
     {
-
+        cout << "Error code: " << code << endl;
         map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
         if (it != chunked_uploads.end())
         {
@@ -171,15 +175,18 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             }
             remove(it->second.upload_path.c_str());
             chunked_uploads.erase(it);
+            cout << "client data cleared" << endl;
         }
 
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(code),
             code);
+        cout << "error response generated" << endl;
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
     catch (exception &e)
     {
+        cout << "Error: " << e.what() << endl;
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(INTERNAL_SERVER_ERROR),
             INTERNAL_SERVER_ERROR);
@@ -558,19 +565,25 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
     }
 }
 
+void RequestHandler::checkMaxBodySize()
+{
+    size_t maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
+    string contentLenghtStr = request.getHeader("content-length").empty() ? "0" : request.getHeader("content-length");
+
+    stringstream ss(contentLenghtStr);
+    size_t contentLenght;
+    ss >> contentLenght;
+
+    cout << "max body size " << maxBodySize << " content length " << contentLenght << endl;
+    if (contentLenght > maxBodySize)
+    {
+        throw PAYLOAD_TOO_LARGE;
+    }
+}
+
 void RequestHandler::processChunkedData(int client_sockfd, const string &data, int epoll_fd)
 {
-
-// Write chunk data
-        // Check max body size
-        // string maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
-        // state.total_size += chunk_size;
-        // if (state.total_size > strtol(maxBodySize.c_str(), NULL, 10))
-        // {
-        //     state.total_size = 0;
-        //     throw PAYLOAD_TOO_LARGE;
-        // }
-
+    checkMaxBodySize();
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
 
@@ -622,8 +635,6 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
             }
         }
 
-        
-
         const char *chunk_data = state.partial_request.data() + chunk_header_size;
         state.output_file.write(chunk_data, chunk_size);
 
@@ -634,15 +645,19 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 
 void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
 {
-
+    checkMaxBodySize();
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
+    cout << "TOTAL SIZE = " << state.total_size << endl;
     state.partial_request += data;
+    string contentLenghtStr = request.getHeader("content-length").empty() ? "0" : request.getHeader("content-length");
 
-    size_t contentLength = request.getHeader("content-length").empty() ? 0 : stoi(request.getHeader("content-length"));
+    stringstream ss(contentLenghtStr);
+    size_t contentLenght;
+    ss >> contentLenght;
 
-    cout << "Total size " << state.total_size << " content length " << contentLength << endl;
+    cout << "Total size " << state.total_size << " content length " << contentLenght << endl;
 
-    if (state.total_size >= contentLength)
+    if (state.total_size >= contentLenght)
     {
         state.output_file.close();
         chunked_uploads.erase(client_sockfd);
@@ -656,15 +671,14 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
 
         state.total_size += state.partial_request.length();
 
-         cout << "Total size " << state.total_size << " content length " << contentLength << endl;
+        cout << "Total size " << state.total_size << " content length " << contentLenght << endl;
 
-        if (state.total_size >= contentLength)
+        if (state.total_size >= contentLenght)
         {
             state.output_file.close();
             state.total_size = 0;
             chunked_uploads.erase(client_sockfd);
 
-      
             responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
             modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
         }
