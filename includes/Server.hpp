@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:51 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/20 18:55:36 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,8 @@ class  Server
         int serverIndex;
         
         Server();
-
+        ~Server();
+    
         void    start();
         void    init();
         void    createLinkedListOfAddr();

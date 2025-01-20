@@ -6,14 +6,18 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/19 21:28:08 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/20 18:59:21 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
-Server::Server() : serverIndex(INDEX)
+Server::Server() : serverIndex(INDEX){}
+Server::~Server()
 {
+    int index = INDEX;
+
+    while (++index < this->res.size()) freeaddrinfo(this->res[index]);
 }
 
 void Server::CreateAddrOfEachPort(int serverIndex)
@@ -65,8 +69,7 @@ void Server::bindSockets()
     while (++index < this->socketContainer.size())
     {
         status = bind(this->socketContainer[index], this->res[index]->ai_addr, this->res[index]->ai_addrlen);
-        if (status == -1)
-            Error(2, "Error Server:: ", "bind");
+        if (status == -1) Error(2, "Error Server:: ", "bind");
     }
 }
 
@@ -74,6 +77,7 @@ void Server::listenForConnection()
 {
     int index = INDEX;
     int status = INDEX;
+
     while (++index < this->res.size())
     {
         status = listen(this->socketContainer[index], 10);
