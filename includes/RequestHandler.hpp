@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 18:18:53 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/20 23:24:46 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,10 +107,8 @@ public:
     ResponseInfos handleGet(const Request &request);
     void checkMaxBodySize();
     ResponseInfos handlePost(const Request &request);
-    ResponseInfos processUpload(Request request, string uploadPath);
     void cleanupConnection(int epoll_fd, int fd);
     void processPostData(int client_sockfd, const string &data, int epoll_fd);
-    ResponseInfos uploadFile(Request request);
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
     ResponseInfos handleDelete(const Request &request);
     void modifyEpollEvent(int epoll_fd, int fd, uint32_t events);
