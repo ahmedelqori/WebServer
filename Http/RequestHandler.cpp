@@ -55,8 +55,6 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         return;
     }
 
-    cout << "Bytes written: " << bytes_written << endl;
-
     if (static_cast<size_t>(bytes_written) < response_str.length())
     {
         // Update the remaining response data
@@ -138,7 +136,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
                     state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
                                         ServerUtils::getFileExtention(request.getHeader("content-type"));
-                    // cout << "upload path " << state.upload_path << endl;
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                     if (!state.output_file.is_open())
