@@ -53,8 +53,8 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
 
-    cout << "Hello" << endl;
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty()) // ressource redirection should change it to != empty
+   
+    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty()) 
     {
         string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
         return handleRedirect(redirectUrl, REDIRECTED);
@@ -67,17 +67,17 @@ ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
             indexPath = ressource.root + "/" + ressource.indexFile;
         else
             indexPath = ressource.root + "/" + ressource.url + '/' + ressource.indexFile;
-            cout << "index is " << indexPath << endl;
+            // cout << "index is " << indexPath << endl;
         struct stat indexStat;
         if (stat(indexPath.c_str(), &indexStat) == 0)
         {
             return ServerUtils::serveFile(indexPath, OK);
         }
     }
-    cout << "Hi 0" << endl;
+    // cout << "Hi 0" << endl;
     if (ressource.autoindex)
         return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
-    return ServerUtils::serveFile(generateErrorPage(FORBIDEN), FORBIDEN);
+    return ServerUtils::ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
 }
 
 ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
@@ -197,7 +197,7 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
 
 string ServerUtils::generateErrorPage(int statusCode)
 {
-
+cout << "Hello from generateErrorPage" << endl;
     stringstream errorPage;
     errorPage << "<html><body><h1>" << statusCode << " " << "</h1></body></html>";
     return errorPage.str();
