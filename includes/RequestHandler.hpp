@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 18:18:53 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/20 23:24:46 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ public:
     ofstream output_file;
 
     ChunkedUploadState()
-        : headers_parsed(false), content_remaining(0), output_file()
+        : headers_parsed(false), content_remaining(0), output_file(), total_size(0)
     {
     }
 
@@ -55,6 +55,7 @@ public:
         : partial_request(other.partial_request),
           headers_parsed(other.headers_parsed),
           content_remaining(other.content_remaining),
+          total_size(other.total_size),
           upload_path(other.upload_path)
     {
         if (other.output_file.is_open())
@@ -104,10 +105,10 @@ public:
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
     ResponseInfos handleGet(const Request &request);
+    void checkMaxBodySize();
     ResponseInfos handlePost(const Request &request);
-    ResponseInfos processUpload(Request request, string uploadPath);
     void cleanupConnection(int epoll_fd, int fd);
-    ResponseInfos uploadFile(Request request);
+    void processPostData(int client_sockfd, const string &data, int epoll_fd);
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
     ResponseInfos handleDelete(const Request &request);
     void modifyEpollEvent(int epoll_fd, int fd, uint32_t events);

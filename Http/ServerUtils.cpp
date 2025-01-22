@@ -219,9 +219,10 @@ bool ServerUtils::isMethodAllowed(const std::string &method, const std::vector<s
 
 string ServerUtils::generateUniqueString()
 {
-    stringstream ss;
-    ss << hex << time(NULL);
-    return ss.str();
+   static unsigned long counter = 0; 
+        stringstream ss;
+        ss << std::hex << time(NULL) << counter++;
+        return ss.str();
 }
 
 ostream &operator<<(ostream &os, const ResponseInfos &response)
