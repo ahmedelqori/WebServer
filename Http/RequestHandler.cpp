@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 18:18:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/20 19:12:24 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -252,13 +252,21 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
             ResponseInfos response;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
+
             cout << "response: ..........................." << endl;
-            cout << "response: " << response.status << endl;
-            cout << "response: " << response.statusMessage << endl;
             for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
             {
                 cout << "response header: " << it->first << ": " << it->second << endl;
+                if (it->first == "Status") {
+                    size_t spacePos = it->second.find(' ');
+                    if (spacePos != string::npos) {
+                        response.status = atoi(it->second.substr(0, spacePos).c_str());
+                        response.statusMessage = it->second.substr(spacePos + 1);
+                    }
+                }
             }
+            cout << "response: " << response.status << endl;
+            cout << "response: " << response.statusMessage << endl;
             cout << "response: " << response.body << endl;
 
             return response;

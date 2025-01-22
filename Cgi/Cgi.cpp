@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Cgi.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:17 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/22 15:35:32 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,8 +116,12 @@ void CGI::setupEnvironment(const Request &req)
 	// Basic CGI variables
 	env["REQUEST_METHOD"] = req.getMethod();
 	env["SERVER_PROTOCOL"] = req.getVersion();
-	env["CONTENT_LENGTH"] = to_string(req.getBody().size());
 
+	if (req.getMethod() == "POST")
+	{
+        env["CONTENT_LENGTH"] = to_string(req.getBody().size());
+        env["CONTENT_TYPE"] = req.getHeader("Content-Type");
+    }
 	size_t questionMarkPos = req.getPath().find('?');
 		env["QUERY_STRING"] = req.getPath().substr(questionMarkPos + 1);
 	cout << "QUERY_STRING: " << env["QUERY_STRING"] << endl;
@@ -263,6 +267,7 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 		}
 	}
 
+	cout << "Parsing CGI output" << endl;
 	ResponseInfos response;
 	response.setStatus(OK); // 200 status for successful execution
 	response.setStatusMessage("OK");
