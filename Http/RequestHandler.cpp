@@ -242,15 +242,16 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (!matchLocation(bestMatch, url, request))
     {
-        string f_path = "www" + url;
-        ressource.autoindex = false;
+        cout << "no match" << endl;
+        string f_path = bestMatch.getRoot() + url;
+        ressource.autoindex = bestMatch.getDirectoryListing();
         ressource.redirect = "";
         ressource.path = f_path;
-        ressource.root = "www";
+        ressource.root = bestMatch.getRoot();
         ressource.url = url;
         return serveRessourceOrFail(ressource);
     }
-
+cout << "no match" << endl;
     string fullPath = bestMatch.getRoot() + url;
 
     ressource.autoindex = bestMatch.getDirectoryListing();
