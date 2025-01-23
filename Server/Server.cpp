@@ -6,13 +6,13 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/23 21:49:57 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/23 23:42:43 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
-Server::Server() : serverIndex(INDEX){}
+Server::Server() : currentStateServer(INIT), serverIndex(INDEX){}
 Server::~Server()
 {
     int index = INDEX;
@@ -43,6 +43,7 @@ void Server::createLinkedListOfAddr()
 
     while (++index < this->configFile.servers.size())
         this->CreateAddrOfEachPort(index);
+    currentStateServer = SOCKETS;
 }
 
 void Server::createSockets()
@@ -59,6 +60,7 @@ void Server::createSockets()
         if (fcntl(sockFD, F_SETFL, O_NONBLOCK) < 0) Error(2, "Error Server:: ", "fcntl - non-blocking");
         this->socketContainer.push_back(sockFD);
     }
+    currentStateServer = BIND;
 }
 
 void Server::bindSockets()
@@ -71,6 +73,7 @@ void Server::bindSockets()
         status = bind(this->socketContainer[index], this->res[index]->ai_addr, this->res[index]->ai_addrlen);
         if (status == -1) Error(2, "Error Server:: ", "bind");
     }
+    currentStateServer = LISTEN;
 }
 
 void Server::listenForConnection()
@@ -84,14 +87,15 @@ void Server::listenForConnection()
         if (status == -1)
             Error(2, "Error Server:: ", "listen");
     }
+    currentStateServer = INIT_EPOLL;
 }
 
 void Server::init_epoll()
 {
     this->epollFD = epoll_create(1024);
-    if (epollFD == -1)
-        Error(2, "Error Server:: ", "epoll_create");
+    if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
     this->registerAllSockets();
+    currentStateServer = EPOLL;
 }
 
 void Server::registerAllSockets()
@@ -102,10 +106,7 @@ void Server::registerAllSockets()
     {
         this->event.events = EPOLLIN;
         this->event.data.fd = this->socketContainer[index];
-        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1)
-        {
-            Error(2, "Error Server:: ", "epoll_ctl (add socket)");
-        }
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) Error(2, "Error Server:: ", "epoll_ctl (add socket)");
     }
 }
 
@@ -114,7 +115,7 @@ void Server::acceptConnection(int index)
     struct sockaddr_storage clientAddr;
     socklen_t addrLen = sizeof(clientAddr);
     int acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
-    
+    logger.log(Logger::INFO, "Accept Connection");
     if (acceptFD == -1)
         Error(2, "Error Server:: ", "accept");
 
@@ -144,7 +145,8 @@ void Server::processData(int index)
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
     int bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
-    
+        logger.log(Logger::INFO, "Receiving Connection");
+
     if (bytesReceived <= 0)
     {
         epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
@@ -180,7 +182,6 @@ void Server::findServer()
             this->acceptAndAnswer(index);
         if (this->events[index].events & EPOLLOUT)
             this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd);
-    std::cout << " ===== Hi ===== " << std::endl;
 }
 
 void Server::loopAndWait()
@@ -200,21 +201,33 @@ void Server::init()
 
     memset(&this->hints, 0, sizeof(this->hints));
     this->hints.ai_family = AF_INET;
-    this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_flags = AI_PASSIVE;
-
-    this->requestHandler.server_config = this->configFile;
-    
-    // this->requestHandler(this->configFile);
-    this->createLinkedListOfAddr();
-    this->createSockets();
-    this->bindSockets();
-    this->listenForConnection();
+    this->hints.ai_socktype = SOCK_STREAM;
+    this->requestHandler.server_config = this->configFile;  
+    currentStateServer = ADDR; 
 }
 
 void Server::start()
 {
-    this->init();
-    this->init_epoll();
-    this->loopAndWait();
+    while (true)
+    {
+        switch (this->currentStateServer)
+        {
+            case INIT:  (this->init(), ServerLogger(LOG_INIT, Logger::SUB, true)); break;
+            case ADDR: (this->createLinkedListOfAddr(), ServerLogger(LOG_ADDR, Logger::SUB, true)); break;
+            case SOCKETS: (this->createSockets(), ServerLogger(LOG_SOCKETS, Logger::SUB, true)); break;
+            case BIND: (this->bindSockets(), ServerLogger(LOG_BIND, Logger::SUB, true)); break;
+            case LISTEN: (this->listenForConnection(), ServerLogger(LOG_LISTEN, Logger::SUB, true)); break;
+            case INIT_EPOLL: (this->init_epoll(), ServerLogger(LOG_INIT_EPOLL, Logger::SUB, true)); break;
+            case EPOLL: ( ServerLogger(LOG_EPOLL, Logger::INFO, false), this->loopAndWait()); break;
+            default: break;
+        }
+    }
+}
+
+void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_sub)
+{
+   usleep(500 * 1000);
+   if (is_sub) this->logger.overwriteLine(message);
+   else this->logger.log(level, message);
 }

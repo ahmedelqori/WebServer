@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/23 13:37:44 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/23 23:23:16 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include "../includes/Response.hpp"
 #include "../includes/ServerUtils.hpp"
 #include "../includes/RequestHandler.hpp"
-
+#include "../includes/Logger.hpp"
 #include <iostream>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -44,6 +44,16 @@ class ConnectionStatus
         time_t lastActivityTime;
 };
 
+enum StateServer
+{
+    INIT,
+    ADDR,
+    SOCKETS,
+    BIND,
+    LISTEN,
+    INIT_EPOLL,
+    EPOLL,
+};
 
 class  Server
 {
@@ -59,14 +69,17 @@ class  Server
         std::vector<int> socketContainer;
         std::map<int, ConnectionStatus*> ClientStatus;
         addrinfo hints;
-
+        Logger logger;
         int serverIndex;
         
+        StateServer currentStateServer; 
+
         Server();
         ~Server();
     
         void    start();
         void    init();
+        void    ServerLogger(std::string message,Logger::Level level, bool is_sub);
         void    createLinkedListOfAddr();
         void    CreateAddrOfEachPort(int serverIndex);
         void    createSockets();
@@ -78,12 +91,6 @@ class  Server
         void    loopAndWait();
         void    findServer();
         void    processData(int index);
-        void    acceptConnection(int index);
-
-        
+        void    acceptConnection(int index);    
 };
-
-
-
-
 #endif
