@@ -1,14 +1,3 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2024/12/19 15:51:13 by ael-qori          #+#    #+#              #
-#    Updated: 2025/01/22 15:39:33 by mbentahi         ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
 
 NAME = webserv
 CXX = c++
@@ -17,8 +6,9 @@ RM = rm -rf
 
 SRC = main.cpp ./ConfigParser/ConfigParser.cpp ./ConfigParser/UtilsParser.cpp ./Server/Server.cpp \
 		Http/HttpParser.cpp Http/Request.cpp Http/Response.cpp Http/ServerUtils.cpp Http/RequestHandler.cpp \
-		Cgi/Cgi.cpp \
-		
+		Cgi/Cgi.cpp ./Logger/Logger.cpp\
+
+
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)
