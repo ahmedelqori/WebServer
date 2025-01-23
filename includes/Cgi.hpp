@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Cgi.hpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 11:26:31 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:39 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/23 17:24:27 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,12 +43,15 @@ private:
 	pid_t childPid;
 	int inputPipe[2];
 	int outputPipe[2];
+	int stderrPipe[2];
 
 public:
+	string normalOutput;
 	void handleChunkedTransfer();
 	void processUpload(const string &uploadPath);
 	void setupEnvironment(const Request &req);
-	ResponseInfos parseOutput(int outputPipe);
+	ResponseInfos parseOutput(string output);
+	string getErrorResponse();
 	CGI(const string &workDir, const string &upDir);
 	CGI();
 	~CGI();
@@ -58,6 +61,7 @@ public:
 	map<string, string> createHeader(string output);
 	int getOutputPipe() { return outputPipe[0]; }
 	int getInputPipe() { return inputPipe[1]; }
+	
 };
 
 class CGIException : public exception
