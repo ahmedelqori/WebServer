@@ -16,9 +16,7 @@ jobs:
       if: github.event_name == 'push'
       run: |
         make
-        ./webserv ./conf/file.conf
     - name: Build and Run (Pull Request)
       if: github.event_name == 'pull_request'
       run: |
         make
-        ./webserv ./conf/file.conf
