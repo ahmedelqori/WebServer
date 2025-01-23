@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/20 18:55:36 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/23 13:37:44 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,22 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
+#include <ctime>
+
+
+# define TIMEOUT 5
+
+class ConnectionStatus
+{
+    public:
+        ConnectionStatus(){
+            time_t now = time(NULL);
+            this->acceptTime = now;
+            this->lastActivityTime = now;
+        }
+        time_t acceptTime;
+        time_t lastActivityTime;
+};
 
 
 class  Server
@@ -40,7 +56,8 @@ class  Server
         ConfigParser configFile;
         RequestHandler requestHandler;
         std::vector<addrinfo *> res;
-        std::vector<int> socketContainer; 
+        std::vector<int> socketContainer;
+        std::map<int, ConnectionStatus*> ClientStatus;
         addrinfo hints;
 
         int serverIndex;
@@ -62,6 +79,8 @@ class  Server
         void    findServer();
         void    processData(int index);
         void    acceptConnection(int index);
+
+        
 };
 
 
