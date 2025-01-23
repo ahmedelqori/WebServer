@@ -19,6 +19,14 @@ using namespace std;
 #define PAYLOAD_TOO_LARGE 413
 #define NO_CONTENT 204
 
+#define NOT_FOUND_CODE "404"
+#define HOST "host"
+#define CONTENT_LENGTH "content-length"
+#define TRANSFER_ENCODING "transfer-encoding"
+#define CONTENT_TYPE "content-type"
+#define CHUNKED "chunked"
+#define HTTP_VERSION "HTTP/1.1"
+
 
 #define MSG_BAD_REQUEST "Bad Request"
 #define MSG_OK "OK"
@@ -81,8 +89,10 @@ struct ResponseInfos
     map<string, string> headers;
     string location;
     string body;
+    size_t bytes_written;
+    string response;
 
-    ResponseInfos() : status(OK), statusMessage(MSG_OK), body("") {}
+    ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response("") {}
     ResponseInfos(int s, const string &sm, const string &b) : status(s), statusMessage(sm), body(b) {}
     void setHeaders(const map<string, string> &h) { headers = h; }
     void addHeader(const string &key, const string &value) {

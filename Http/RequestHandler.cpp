@@ -80,9 +80,9 @@ void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
 static bool isChunkedRequest(Request request)
 {
     return (request.getMethod() == POST &&
-            request.hasHeader("transfer-encoding") &&
-            request.hasHeader("content-type") &&
-            request.getHeader("transfer-encoding") == "chunked");
+            request.hasHeader(TRANSFER_ENCODING) &&
+            request.hasHeader(CONTENT_TYPE) &&
+            request.getHeader(TRANSFER_ENCODING) == CHUNKED);
 }
 
 static bool isPostMethod(Request request)
@@ -101,6 +101,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     {
         if (isNewClient(client_sockfd))
         {
+           
             HttpParser parser;
             request = parser.parse(req);
 
@@ -114,7 +115,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                     state.content_remaining = 0;
 
                     state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
-                                        ServerUtils::getFileExtention(request.getHeader("content-type"));
+                                        ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                     if (!state.output_file.is_open())
@@ -135,7 +136,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                     state.total_size = 0;
 
                     state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
-                                        ServerUtils::getFileExtention(request.getHeader("content-type"));
+                                        ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                     if (!state.output_file.is_open())
@@ -160,7 +161,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
     catch (int code)
     {
-        cout << "Error code: " << code << endl;
         map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
         if (it != chunked_uploads.end())
         {
@@ -170,18 +170,16 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             }
             remove(it->second.upload_path.c_str());
             chunked_uploads.erase(it);
-            cout << "client data cleared" << endl;
         }
 
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(code),
             code);
-        cout << "error response generated" << endl;
+     
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
     catch (exception &e)
     {
-        cout << "Error: " << e.what() << endl;
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(INTERNAL_SERVER_ERROR),
             INTERNAL_SERVER_ERROR);
@@ -191,19 +189,19 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
 ResponseInfos RequestHandler::processRequest(const Request &request)
 {
-    // cout << "Process request opened " << endl;
+   
     if (request.getMethod() == GET)
         return handleGet(request);
     else if (request.getMethod() == DELETE)
         return handleDelete(request);
     else
         return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_EXIST), NOT_EXIST);
-    // else if (request.getMethod() == POST)
-    //     return handlePost(request);
 }
 
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
+
+   cout << "BODY: " << request.getBody() << endl;
 
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
@@ -242,7 +240,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (!matchLocation(bestMatch, url, request))
     {
-        cout << "no match" << endl;
+
         string f_path = bestMatch.getRoot() + url;
         ressource.autoindex = bestMatch.getDirectoryListing();
         ressource.redirect = "";
@@ -251,7 +249,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         ressource.url = url;
         return serveRessourceOrFail(ressource);
     }
-cout << "no match" << endl;
+
     string fullPath = bestMatch.getRoot() + url;
 
     ressource.autoindex = bestMatch.getDirectoryListing();
@@ -414,6 +412,9 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 {
 
+    map<string,string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
+
     switch (ServerUtils::checkResource(ressource.path))
     {
     case DIRECTORY:
@@ -422,22 +423,16 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
     case REGULAR:
         return ServerUtils::serveFile(ressource.path, OK);
         break;
-    case NOT_EXIST:
-        return ServerUtils::serveFile("www/404.html", NOT_FOUND);
-        break;
-    case UNDEFINED:
-        return ServerUtils::serveFile("www/404.html", NOT_FOUND);
-        break;
     default:
-        return ServerUtils::serveFile("www/404.html", NOT_FOUND);
+        return ServerUtils::serveFile(errorPagePath, NOT_FOUND);
         break;
     }
 }
 
 void RequestHandler::checkMaxBodySize()
 {
-    size_t maxBodySize = getServer(server_config, request.getHeader("host")).getClientMaxBodySize();
-    string contentLenghtStr = request.getHeader("content-length").empty() ? "0" : request.getHeader("content-length");
+    size_t maxBodySize = getServer(server_config, request.getHeader(HOST)).getClientMaxBodySize();
+    string contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
 
     stringstream ss(contentLenghtStr);
     size_t contentLenght;
@@ -506,7 +501,7 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
         string contentLenghtStr;
         try
         {
-            contentLenghtStr = request.getHeader("content-length").empty() ? "0" : request.getHeader("content-length");
+            contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
         }
         catch (const std::exception &e)
         {
@@ -550,7 +545,7 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     string contentLenghtStr;
     try
     {
-        contentLenghtStr = request.getHeader("content-length").empty() ? "0" : request.getHeader("content-length");
+        contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
     }
     catch (const std::exception &e)
     {
