@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 11:26:31 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/22 22:41:23 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/23 17:24:27 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,7 @@ private:
 	int stderrPipe[2];
 
 public:
+	string normalOutput;
 	void handleChunkedTransfer();
 	void processUpload(const string &uploadPath);
 	void setupEnvironment(const Request &req);

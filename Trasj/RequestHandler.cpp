@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/23 17:17:20 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/23 17:17:33 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -264,11 +264,9 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
             return response;
         }
         catch (CGIException &e)
-        catch (CGIException &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-        catch (exception &e)
         catch (exception &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';

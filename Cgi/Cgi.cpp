@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/23 16:52:10 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/23 17:26:02 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -282,7 +282,9 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 		cout << "Output: " << output << endl;
         if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos) 
 		{
-            response.setStatus(INTERNAL_SERVER_ERROR);
+            response.setStatus(FORBIDEN);
+			response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
+			response.setBody(normalOutput);
 			cout << "PHP Warning or Error found" << endl;
             return response;
         }
@@ -316,19 +318,23 @@ string CGI::getResponse()
 	FD_ZERO(&errfds);
 	FD_SET(stderrPipe[0], &errfds);
 	
-	while (select(outputPipe[0] + 1, &readfds, NULL, NULL, &tv) > 0)
-	{
-		bytesRead = read(outputPipe[0], buffer, sizeof(buffer));
-		if (bytesRead > 0)
-			response.append(buffer, bytesRead);
-		else if (bytesRead == 0)
-			break;
-	}
 	while (select(stderrPipe[0] + 1, &errfds, NULL, NULL, &tv) > 0)
 	{
 		bytesRead = read(stderrPipe[0], buffer, sizeof(buffer));
 		if (bytesRead > 0)
 			response.append(buffer, bytesRead);
+		else if (bytesRead == 0)
+			break;
+	}
+	response.append("\n");
+	while (select(outputPipe[0] + 1, &readfds, NULL, NULL, &tv) > 0)
+	{
+		bytesRead = read(outputPipe[0], buffer, sizeof(buffer));
+		if (bytesRead > 0)
+		{
+			response.append(buffer, bytesRead);
+			normalOutput.append(buffer, bytesRead);
+		}
 		else if (bytesRead == 0)
 			break;
 	}
