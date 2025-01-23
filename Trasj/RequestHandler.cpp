@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 18:00:32 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/01/23 17:17:33 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -155,6 +155,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 }
 
 ResponseInfos RequestHandler::processRequest(int client_sockfd, Request request, int epoll_fd)
+ResponseInfos RequestHandler::processRequest(int client_sockfd, Request request, int epoll_fd)
 {
     if (request.getMethod() == GET)
         return handleGet(request);
@@ -172,6 +173,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     LocationConfig bestMatch;
     RessourceInfo ressource;
     cout << "handle Get" << endl;
+    cout << "handle Get" << endl;
     if (url.find_last_of(".php") != string::npos)
     {
         cout << "Im in cgi " << endl;
@@ -181,18 +183,22 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             CGI cgi;
             ResponseInfos response;
             cout << "test dsgsdgsdgsdgsdgdg : " << url << endl;
+            cout << "test dsgsdgsdgsdgsdgdg : " << url << endl;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
             return response;
         }
         catch (CGIException &e)
+        catch (CGIException &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
         catch (exception &e)
+        catch (exception &e)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
+
 
         // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
     }
@@ -235,23 +241,25 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
     cout << "handle Post" << endl;
     if (url.find_last_of(".php") != string::npos)
     {
-        cout << "Im in cgi " << endl;
         cout << request << endl;
         try
         {
             CGI cgi;
             ResponseInfos response;
-            cout << "test dsgsdgsdgsdgsdgdg : " << url << endl;
             response = cgi.execute(request, url);
             response = cgi.parseOutput(cgi.getOutputPipe());
+            cout << "response: ..........................." << endl;
             cout << "response: ..........................." << endl;
             cout << "response: " << response.status << endl;
             cout << "response: " << response.statusMessage << endl;
             for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
             {
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+            {
                 cout << "response header: " << it->first << ": " << it->second << endl;
             }
             cout << "response: " << response.body << endl;
+
 
             return response;
         }
@@ -263,8 +271,6 @@ ResponseInfos RequestHandler::handlePost(const Request &request)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-
-        // return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
     }
     cout << "after handling post cgi " << endl;
     if (!matchLocation(bestMatch, url, request))
@@ -292,6 +298,8 @@ static ResponseInfos deleteDir(const string path)
             struct stat statbuf;
             if (stat(fullPath.c_str(), &statbuf) == -1)
             {
+            if (stat(fullPath.c_str(), &statbuf) == -1)
+            {
                 closedir(dir);
                 return ServerUtils::ressourceToResponse(
                     ServerUtils::generateErrorPage(FORBIDEN),
@@ -300,12 +308,22 @@ static ResponseInfos deleteDir(const string path)
 
             if (S_ISDIR(statbuf.st_mode))
             {
+
+            if (S_ISDIR(statbuf.st_mode))
+            {
                 ResponseInfos resp = deleteDir(fullPath);
+                if (resp.status != NO_CONTENT)
+                {
                 if (resp.status != NO_CONTENT)
                 {
                     closedir(dir);
                     return resp;
                 }
+            }
+            else
+            {
+                if (remove(fullPath.c_str()) != 0)
+                {
             }
             else
             {
