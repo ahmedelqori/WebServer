@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/23 17:26:02 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/23 23:04:57 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,7 +116,9 @@ void CGI::setupEnvironment(const Request &req)
 	// Basic CGI variables
 	env["REQUEST_METHOD"] = req.getMethod();
 	env["SERVER_PROTOCOL"] = req.getVersion();
-
+	env["SERVER_SOFTWARE"] = "Webserv/1.0";
+	env["GATEWAY_INTERFACE"] = "CGI/1.1";
+	env["SERVER_NAME"] = "localhost";
 	if (req.getMethod() == "POST")
 	{
         env["CONTENT_LENGTH"] = to_string(req.getBody().size());
