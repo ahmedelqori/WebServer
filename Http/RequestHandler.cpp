@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/22 15:39:13 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/01/22 21:59:35 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,6 +127,24 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             {
                 LocationConfig location;
 
+                string url = request.getDecodedPath();
+                if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
+                {
+                    CGI cgi;
+
+                    ResponseInfos response;
+                    response = cgi.execute(request, url);
+                    cout << "response: ..........................." << endl;
+                    cout << "response: " << response.status << endl;
+                    cout << "response: " << response.statusMessage << endl;
+                    for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+                    {
+                        cout << "response header: " << it->first << ": " << it->second << endl;
+                    }
+                    cout << "response: " << response.body << endl;
+                    cout << "get response" << endl;
+                    
+                }
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
                     ChunkedUploadState state;
@@ -216,7 +234,6 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             CGI cgi;
             ResponseInfos response;
             response = cgi.execute(request, url);
-            response = cgi.parseOutput(cgi.getOutputPipe());
             cout << "response: ..........................." << endl;
             cout << "response: " << response.status << endl;
             cout << "response: " << response.statusMessage << endl;

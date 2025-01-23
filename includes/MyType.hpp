@@ -112,4 +112,5 @@ struct ResponseInfos
 
         return (it != headers.end()) ? it->second : "";
     }
+    bool hasHeader(const string& key) const { return headers.find(key) != headers.end(); }
 };
