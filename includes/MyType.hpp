@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include <iostream>
 #include <vector>
 #include <map>
@@ -37,11 +37,9 @@ using namespace std;
 #define MSG_NOT_ALLOWED "Method Not Allowed"
 #define MSG_NOT_FOUND "Not Found"
 
-
 #define GET "GET"
 #define POST "POST"
 #define DELETE "DELETE"
-
 
 enum File_Type
 {
@@ -51,13 +49,12 @@ enum File_Type
     UNDEFINED
 };
 
-enum State {
+enum State
+{
     REQUEST_LINE,
     HEADER,
     BODY
 };
-
-
 
 struct Location
 {
@@ -94,8 +91,21 @@ struct ResponseInfos
 
     ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response("") {}
     ResponseInfos(int s, const string &sm, const string &b) : status(s), statusMessage(sm), body(b) {}
+    ResponseInfos &operator=(const ResponseInfos &r)
+    {
+        if (this != &r)
+        {
+            status = r.status;
+            statusMessage = r.statusMessage;
+            headers = r.headers;
+            location = r.location;
+            body = r.body;
+        }
+        return *this;
+    }
     void setHeaders(const map<string, string> &h) { headers = h; }
-    void addHeader(const string &key, const string &value) {
+    void addHeader(const string &key, const string &value)
+    {
         headers[key] = value;
     }
     void setBody(const string &b) { body = b; }
@@ -106,4 +116,12 @@ struct ResponseInfos
     void setStatus(int s) { status = s; }
     void setStatusMessage(const string &sm) { statusMessage = sm; }
     void parseHeaders(const string &response);
+    string getHeader(const string &key) const
+    {
+
+        map<string, string>::const_iterator it = headers.find(key);
+
+        return (it != headers.end()) ? it->second : "";
+    }
+    bool hasHeader(const string& key) const { return headers.find(key) != headers.end(); }
 };
