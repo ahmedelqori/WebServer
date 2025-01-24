@@ -101,7 +101,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     {
         if (isNewClient(client_sockfd))
         {
-           
+
             HttpParser parser;
             request = parser.parse(req);
 
@@ -144,7 +144,9 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                     }
                     cout << "response: " << response.body << endl;
                     cout << "get response" << endl;
-                    
+                    responses_info[client_sockfd] = response;
+
+                    modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
                 }
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
@@ -193,7 +195,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(code),
             code);
-     
+
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
     catch (exception &e)
@@ -207,7 +209,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
 ResponseInfos RequestHandler::processRequest(const Request &request)
 {
-   
+
     if (request.getMethod() == GET)
         return handleGet(request);
     else if (request.getMethod() == DELETE)
@@ -219,14 +221,15 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
 
-   cout << "BODY: " << request.getBody() << endl;
+    cout << "BODY: " << request.getBody() << endl;
 
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
     if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
     {
-        cout << request << endl;
+        // cout << request << endl;
+        cout << "start processing cgi req" << endl;
         try
         {
             CGI cgi;
@@ -429,7 +432,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 {
 
-    map<string,string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
     string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
     switch (ServerUtils::checkResource(ressource.path))
