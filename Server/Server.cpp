@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/24 22:02:05 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/25 14:00:04 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ void Server::CreateAddrOfEachPort(int serverIndex)
                         itoa(this->configFile.servers[serverIndex].getPorts()[index]).c_str(),
                         &this->hints,
                         &this->res[indexRes++]) != 0)
-            throw std::runtime_error("Error in getaddre info");
+            Error(2, "Error Server:: ", "in getaddre info");
     }
 }
 
@@ -51,14 +51,16 @@ void Server::createSockets()
     int index = INDEX;
     int sockFD = INDEX;
     int opt = 1;
+    int flags;
 
     while (++index < this->res.size())
     {
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype, this->res[index]->ai_protocol);
         if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(2, "Error Server:: ", "setsockopt");
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(2, "Error Server:: ", "setsockopt");
-        if (fcntl(sockFD, F_SETFL, O_NONBLOCK) < 0) Error(2, "Error Server:: ", "fcntl - non-blocking");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEADDR");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
+        flags = fcntl(sockFD, F_GETFL, 0);
+        if (fcntl(sockFD, F_SETFL, flags | O_NONBLOCK) < 0) Error(2, "Error Server:: ", "fcntl - non-blocking");
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
@@ -110,44 +112,70 @@ void Server::registerAllSockets()
     }
 }
 
+void Server::NonBLockingCLient(int clientFD)
+{
+    int flags;
+
+    flags = fcntl(clientFD, F_GETFL, 0);
+    if (fcntl(clientFD, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        close(clientFD);
+        Error(2, "Error Server:: ", "fcntl - O_NONBLOCK for clientFD");
+    }
+}
+
+void Server::addClientToEpoll(int clientFD)
+{
+    struct epoll_event event;
+    
+    event.data.fd = clientFD;
+    event.events = EPOLLIN | EPOLLET;
+    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1)
+    {
+        close(clientFD);
+        Error(2, "Error Server:: ", "epoll_ctl (add clientFD)");
+    }    
+}
+
 void Server::acceptConnection(int index)
 {
-    struct sockaddr_storage clientAddr;
-    socklen_t addrLen = sizeof(clientAddr);
-    int acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
-    if (acceptFD == -1) Error(2, "Error Server:: ", "accept");
-
-    struct epoll_event event;
-    event.events = EPOLLIN;
-    event.data.fd = acceptFD;
-    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, acceptFD, &event) == -1)
+    int                         acceptFD;
+    socklen_t                   addrLen;
+    struct sockaddr_storage     clientAddr;
+    
+    addrLen = sizeof(clientAddr);
+    acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
+    if (acceptFD == -1)
     {
-        close(acceptFD);
-        Error(2, "Error Server:: ", "epoll_ctl (add acceptFD)");
+        if (errno != EAGAIN && errno != EWOULDBLOCK) Error(2, "Error Server:: ", "accept");
+        return;
     }
+    this->NonBLockingCLient(acceptFD);
+    this->addClientToEpoll(acceptFD);
 }
 
 void Server::processData(int index)
 {
-    char buffer[1024];
+    int             bytesReceived;
+    char            buffer[1024];
+    std::string     requestData;
+    
     memset(buffer, 0, sizeof(buffer));
-    int bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
+    bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
 
     if (bytesReceived <= 0)
     {
-        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
-        close(events[index].data.fd);
-        std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
+        if (bytesReceived == 0 || errno != EAGAIN)
+        {
+            epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
+            close(events[index].data.fd);
+            std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
+        }
         return;
     }
-    string requestData;
-
     requestData.append(buffer, bytesReceived);
     if (!requestData.empty())
-    {
         this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
-    }
-
 }
 
 void Server::acceptAndAnswer(int index)
@@ -158,23 +186,34 @@ void Server::acceptAndAnswer(int index)
         processData(index);
 }
 
-
 void Server::findServer()
 {
-    int index = INDEX;
+    int index           = INDEX;
+    std::string         fdStr, eventFlags;
+    
     while (++index < this->nfds)
-        if (this->events[index].events & EPOLLIN)
-            this->acceptAndAnswer(index);
-        else if (this->events[index].events & EPOLLOUT)
-            this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd);
+    {
+        fdStr = itoa(this->events[index].data.fd);
+        if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
+        if (this->events[index].events & EPOLLOUT) this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd);
+    }
 }
 
 void Server::loopAndWait()
 {
+    ServerLogger("Server Started", Logger::INFO, false);
     while (true)
     {
         this->nfds = epoll_wait(epollFD, events, 1024, -1);
-        if (this->nfds == -1) Error(2, "Error Server:: ", "epoll_wait");
+        if (this->nfds == -1) {
+            if (errno == EINTR) {
+                ServerLogger("epoll_wait interrupted by signal. Retrying...", Logger::WARNING, false);
+                continue;
+            } else {
+                ServerLogger("epoll_wait failed: " + std::string(strerror(errno)), Logger::ERROR, false);
+                Error(2, "Critical Error in Server:: ", "epoll_wait");
+            }
+        }
         if (this->nfds > 0) this->findServer();
     }
     close(epollFD);
@@ -203,7 +242,7 @@ void Server::start()
         case INIT_EPOLL :           (this->init_epoll(),             ServerLogger(LOG_INIT_EPOLL, Logger::SUB, true));
         default: break;
     }
-    (ServerLogger(LOG_EPOLL, Logger::INFO, false), this->loopAndWait());
+    this->loopAndWait();
 }
 
 void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_sub)
