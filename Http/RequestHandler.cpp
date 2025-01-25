@@ -12,6 +12,8 @@
 
 #include "../includes/RequestHandler.hpp"
 #include "../includes/Cgi.hpp"
+#include <csignal>
+
 
 RequestHandler::RequestHandler()
 {
@@ -32,38 +34,79 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         cleanupConnection(epoll_fd, current_fd);
         return;
     }
-
+    reqBuffer.clear();
     Response response;
     ResponseInfos &response_info = responses_info[current_fd];
-
-    response.setStatus(response_info.status, response_info.statusMessage);
-    map<string, string>::const_iterator head = response_info.headers.begin();
-    while (head != response_info.headers.end())
+    cout << "FD ----> " << current_fd << endl;
+    cout << "bytes sent : " << response_info.bytes_sent << endl;
+    if (response_info.headers.size() != 0)
     {
-        response.addHeader(head->first, head->second);
-        head++;
+        cout << "remaining data sending ..." << endl;
+        response.setStatus(response_info.status, response_info.statusMessage);
+        map<string, string>::const_iterator head = response_info.headers.begin();
+        while (head != response_info.headers.end())
+        {
+            response.addHeader(head->first, head->second);
+            head++;
+        }
+        string response_str = response.getResponse();
+        ssize_t bytes_written = send(current_fd, response_str.c_str(), response_str.size(), 0);
+        if (bytes_written == -1)
+        {
+            Error(1, "write Error");
+            return;
+        }
+        responses_info.find(current_fd)->second.headers.clear();
+        response_info.bytes_sent = 0;
+
+    }
+    else
+    {
+        size_t current_chunk_size = (response_info.bytes_sent + 8000 > response_info.getBody().size()) ? response_info.getBody().size() - response_info.bytes_sent : 8000;
+
+        // Extract the next chunk
+        string buffer = response_info.getBody().substr(response_info.bytes_sent, current_chunk_size);
+        // cout << buffer << endl;
+        // signal(SIGPIPE,SIG_IGN);
+        // sleep(10);
+        if (buffer.length() == 0)
+            cleanupConnection(epoll_fd, current_fd);
+        ssize_t bytes_written = send(current_fd, buffer.c_str(), buffer.size(), 0);
+    // ssize_t bytes_written = write(current_fd, buffer.c_str(),  buffer.size());
+        if (bytes_written == -1)
+        {
+            // Error(1, "write Error");
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
+        if (buffer.length() < 8000) {
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
+        // Process the chunk (you can do something with the 'buffer' here)
+        // std::cout << "Chunk: " << buffer << std::endl;
+
+        // Move the offset forward by the chunk size
+        response_info.bytes_sent += bytes_written;
     }
 
-    response.setBody(response_info.body);
+    // response.setBody(response_info.body);
 
-    string response_str = response.getResponse();
-    ssize_t bytes_written = write(current_fd, response_str.c_str(), response_str.length());
+    // if (bytes_written == -1)
+    // {
+    //     Error(1, "write Error");
+    //     return;
+    // }
 
-    if (bytes_written == -1)
-    {
-        Error(1, "write Error");
-        return;
-    }
-
-    if (static_cast<size_t>(bytes_written) < response_str.length())
-    {
-        // Update the remaining response data
-        responses_info[current_fd].body = response_str.substr(bytes_written);
-        return;
-    }
+    // if (static_cast<size_t>(bytes_written) < response_str.length())
+    // {
+    //     // Update the remaining response data
+    //     responses_info[current_fd].body = response_str.substr(bytes_written);
+    //     return;
+    // }
 
     // Complete response sent, clean up
-    cleanupConnection(epoll_fd, current_fd);
+    // cleanupConnection(epoll_fd, current_fd);
 }
 void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
 {
@@ -101,12 +144,18 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     {
         if (isNewClient(client_sockfd))
         {
+            reqBuffer.clear();
+            reqBuffer += req;
+
+            if (reqBuffer.find("\r\n\r\n") == string::npos)
+                return;
 
             HttpParser parser;
-            request = parser.parse(req);
+            request = parser.parse(reqBuffer);
 
             if (isChunkedRequest(request))
             {
+
                 LocationConfig location;
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
@@ -173,10 +222,12 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         }
         else
         {
+            if (reqBuffer.find("\r\n\r\n") == string::npos && request.getBody().empty())
+                return;
             if (isChunkedRequest(request))
-                processChunkedData(client_sockfd, req, epoll_fd);
+                processChunkedData(client_sockfd, reqBuffer, epoll_fd);
             else
-                processPostData(client_sockfd, req, epoll_fd);
+                processPostData(client_sockfd, reqBuffer, epoll_fd);
         }
     }
     catch (int code)
@@ -221,7 +272,7 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
 
-    cout << "BODY: " << request.getBody() << endl;
+    // cout << "BODY: " << request.getBody() << endl;
 
     string url = request.getDecodedPath();
     LocationConfig bestMatch;

@@ -45,6 +45,7 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
     if (filePath.find_last_of('.') != string::npos)
     {
         string ext = filePath.substr(filePath.find_last_of('.'));
+        response.headers["Accept-Ranges"] = "bytes";
         response.headers["Content-Type"] = getMimeType(ext);
     }
     return response;

@@ -86,7 +86,9 @@ struct ResponseInfos
     map<string, string> headers;
     string location;
     string body;
+    string response_str;
     size_t bytes_written;
+    size_t bytes_sent;
     string response;
 
     ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response("") {}
