@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/23 23:23:16 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/25 13:53:41 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,6 +91,8 @@ class  Server
         void    loopAndWait();
         void    findServer();
         void    processData(int index);
-        void    acceptConnection(int index);    
+        void    acceptConnection(int index);  
+        void    NonBLockingCLient(int clientFD); 
+        void    addClientToEpoll(int clientFD);
 };
 #endif
