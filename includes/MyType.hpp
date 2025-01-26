@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <fstream>
 
 using namespace std;
 
@@ -82,6 +83,7 @@ struct RessourceInfo
 struct ResponseInfos
 {
     int status;
+    // ifstream fileStream;
     string statusMessage;
     map<string, string> headers;
     string location;
@@ -89,6 +91,7 @@ struct ResponseInfos
     string response_str;
     size_t bytes_written;
     size_t bytes_sent;
+    string filePath;
     string response;
 
     ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response("") {}
@@ -100,6 +103,7 @@ struct ResponseInfos
             status = r.status;
             statusMessage = r.statusMessage;
             headers = r.headers;
+            filePath = r.filePath;
             location = r.location;
             body = r.body;
         }

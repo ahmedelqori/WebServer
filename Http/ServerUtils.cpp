@@ -30,22 +30,37 @@ File_Type ServerUtils::checkResource(const std::string &fullPath)
     }
 }
 
+static std::size_t getFileSize(const std::string& filePath) {
+    std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary); // Open the file in binary mode
+    if (!file) {
+        std::cerr << "Error: Could not open file " << filePath << std::endl;
+        return 0; // Return 0 if the file could not be opened
+    }
+
+    file.seekg(0, std::ios::end); // Move the file pointer to the end
+    std::size_t fileSize = file.tellg(); // Get the position of the pointer (file size)
+    file.close(); // Close the file
+
+    return fileSize;
+}
+
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
-  
-    ifstream file(filePath.c_str(), ios::in | ios::binary);
-    if (!file.is_open())
-        return ServerUtils::ressourceToResponse(generateErrorPage(NOT_FOUND), NOT_FOUND);
 
-    stringstream buffer;
-    buffer << file.rdbuf();
-    file.close();
-    ResponseInfos response ;
-    response = ServerUtils::ressourceToResponse(buffer.str(), code);
+    if (access(filePath.c_str(), R_OK) != 0)
+        return ServerUtils::ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
+
+    ResponseInfos response;
+    response.filePath = filePath;
+    response.status = code;
+    response.statusMessage = Request::generateStatusMsg(code);
+    stringstream ss;
+    ss << filePath.length();
+    response.headers["Content-Length"] = getFileSize(filePath);
     if (filePath.find_last_of('.') != string::npos)
     {
         string ext = filePath.substr(filePath.find_last_of('.'));
-        response.headers["Accept-Ranges"] = "bytes";
+        // response.headers["Connection"] = "keep-alive";
         response.headers["Content-Type"] = getMimeType(ext);
     }
     return response;
@@ -54,21 +69,20 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
 {
 
-   
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty()) 
+    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
     {
         string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
         return handleRedirect(redirectUrl, REDIRECTED);
     }
     if (!ressource.indexFile.empty())
     {
-        
+
         string indexPath;
         if (ressource.autoindex)
             indexPath = ressource.root + "/" + ressource.indexFile;
         else
             indexPath = ressource.root + "/" + ressource.url + '/' + ressource.indexFile;
-            // cout << "index is " << indexPath << endl;
+        // cout << "index is " << indexPath << endl;
         struct stat indexStat;
         if (stat(indexPath.c_str(), &indexStat) == 0)
         {
@@ -198,7 +212,7 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
 
 string ServerUtils::generateErrorPage(int statusCode)
 {
-cout << "Hello from generateErrorPage" << endl;
+    cout << "Hello from generateErrorPage" << endl;
     stringstream errorPage;
     errorPage << "<html><body><h1>" << statusCode << " " << "</h1></body></html>";
     return errorPage.str();
@@ -220,10 +234,10 @@ bool ServerUtils::isMethodAllowed(const std::string &method, const std::vector<s
 
 string ServerUtils::generateUniqueString()
 {
-   static unsigned long counter = 0; 
-        stringstream ss;
-        ss << std::hex << time(NULL) << counter++;
-        return ss.str();
+    static unsigned long counter = 0;
+    stringstream ss;
+    ss << std::hex << time(NULL) << counter++;
+    return ss.str();
 }
 
 ostream &operator<<(ostream &os, const ResponseInfos &response)

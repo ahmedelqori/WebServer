@@ -11,6 +11,8 @@
 #include <dirent.h>
 #include <vector>
 #include <map>
+#include <fcntl.h>
+#include <unistd.h>
 
 class ServerUtils
 {

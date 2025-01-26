@@ -14,7 +14,6 @@
 #include "../includes/Cgi.hpp"
 #include <csignal>
 
-
 RequestHandler::RequestHandler()
 {
 }
@@ -34,80 +33,78 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         cleanupConnection(epoll_fd, current_fd);
         return;
     }
-    reqBuffer.clear();
-    Response response;
     ResponseInfos &response_info = responses_info[current_fd];
-    cout << "FD ----> " << current_fd << endl;
-    cout << "bytes sent : " << response_info.bytes_sent << endl;
-    if (response_info.headers.size() != 0)
+
+    if (!response_info.headers.empty())
     {
-        cout << "remaining data sending ..." << endl;
-        response.setStatus(response_info.status, response_info.statusMessage);
-        map<string, string>::const_iterator head = response_info.headers.begin();
-        while (head != response_info.headers.end())
+        fcntl(current_fd, F_SETFL, O_NONBLOCK);
+        // cout << "Hello from headers" << endl;
+        Response responseHeaders;
+        responseHeaders.setStatus(response_info.status, response_info.statusMessage);
+        for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
         {
-            response.addHeader(head->first, head->second);
-            head++;
+            responseHeaders.addHeader(it->first, it->second);
         }
-        string response_str = response.getResponse();
-        ssize_t bytes_written = send(current_fd, response_str.c_str(), response_str.size(), 0);
-        if (bytes_written == -1)
-        {
-            Error(1, "write Error");
-            return;
-        }
-        responses_info.find(current_fd)->second.headers.clear();
-        response_info.bytes_sent = 0;
 
-    }
-    else
-    {
-        size_t current_chunk_size = (response_info.bytes_sent + 8000 > response_info.getBody().size()) ? response_info.getBody().size() - response_info.bytes_sent : 8000;
-
-        // Extract the next chunk
-        string buffer = response_info.getBody().substr(response_info.bytes_sent, current_chunk_size);
-        // cout << buffer << endl;
-        // signal(SIGPIPE,SIG_IGN);
-        // sleep(10);
-        if (buffer.length() == 0)
-            cleanupConnection(epoll_fd, current_fd);
-        ssize_t bytes_written = send(current_fd, buffer.c_str(), buffer.size(), 0);
-    // ssize_t bytes_written = write(current_fd, buffer.c_str(),  buffer.size());
-        if (bytes_written == -1)
-        {
-            // Error(1, "write Error");
-            cleanupConnection(epoll_fd, current_fd);
-            return;
-        }
-        if (buffer.length() < 8000) {
-            cleanupConnection(epoll_fd, current_fd);
-            return;
-        }
-        // Process the chunk (you can do something with the 'buffer' here)
-        // std::cout << "Chunk: " << buffer << std::endl;
-
-        // Move the offset forward by the chunk size
-        response_info.bytes_sent += bytes_written;
+        string responseHeadersStr = responseHeaders.getResponse();
+        // cout << "responseHeadersStr: " << responseHeadersStr << endl;
+        ssize_t bytes_sent = send(current_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+        response_info.headers.clear();
+        responses_info[current_fd].bytes_written = 0;
+        return;
     }
 
-    // response.setBody(response_info.body);
+    if (!response_info.body.empty())
+    {
+        // cout << "Hello from body" << endl;
+        ssize_t bytes_sent = send(current_fd, response_info.body.c_str(), response_info.body.length(), 0);
+        if (bytes_sent == -1)
+        {
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
+        response_info.body = response_info.body.substr(bytes_sent);
+        if (response_info.body.empty())
+        {
+            cleanupConnection(epoll_fd, current_fd);
+        }
+    }
 
-    // if (bytes_written == -1)
-    // {
-    //     Error(1, "write Error");
-    //     return;
-    // }
+    if (response_info.filePath != "")
+    {
+        // cout << "Hello from file" << endl;
+        ifstream fileStream(response_info.filePath.c_str(), ios::in | ios::binary);
+        if (!fileStream.is_open())
+        {
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
 
-    // if (static_cast<size_t>(bytes_written) < response_str.length())
-    // {
-    //     // Update the remaining response data
-    //     responses_info[current_fd].body = response_str.substr(bytes_written);
-    //     return;
-    // }
-
-    // Complete response sent, clean up
-    // cleanupConnection(epoll_fd, current_fd);
+        fileStream.seekg(responses_info[current_fd].bytes_written, ios::beg);
+        char buffer[1024];
+        fileStream.read(buffer, 1024);
+        ssize_t bytes_read = fileStream.gcount();
+        if (bytes_read <= 0)
+        {
+            Logger::log(ERROR, "bytes_read == 0");
+            // cout << "bytes_read == 0" << endl;
+            fileStream.close();
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
+        ssize_t bytes_sent = send(current_fd, buffer, bytes_read, 0);
+        // cout << "bytes written " << responses_info[current_fd].bytes_written << " bytes sent " << bytes_sent << endl;
+        if (bytes_sent == -1)
+        {
+        
+            fileStream.close();
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
+        responses_info[current_fd].bytes_written += bytes_sent;
+    }
 }
+
 void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
 {
     struct epoll_event ev;

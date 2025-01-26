@@ -27,6 +27,7 @@
 #include "ServerUtils.hpp"
 #include "HttpParser.hpp"
 #include "ConfigParser.hpp"
+#include "Logger.hpp"
 
 class ChunkedUploadState
 {
