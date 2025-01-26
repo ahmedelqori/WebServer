@@ -94,6 +94,8 @@ void Server::listenForConnection()
 
 void Server::init_epoll()
 {
+      signal(SIGPIPE, SIG_IGN);
+  signal(SIGTSTP, SIG_IGN);
     this->epollFD = epoll_create(1024);
     if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
     this->registerAllSockets();

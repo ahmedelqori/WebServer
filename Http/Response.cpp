@@ -41,8 +41,8 @@ string Response::getResponse() const
         ss << it->first << ": " << it->second << "\r\n";
         it++; 
     }
-    ss << "\r\n"
-       << body;
+    ss << "\r\n";
+    //    << body;
     // cout << "hh\r\n" << ss.str() << "hh" << endl;
     return ss.str();
 }

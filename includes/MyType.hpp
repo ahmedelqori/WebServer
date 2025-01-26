@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <fstream>
 
 using namespace std;
 
@@ -18,6 +19,15 @@ using namespace std;
 #define VERSION_NOT_SUPPORTED 505
 #define PAYLOAD_TOO_LARGE 413
 #define NO_CONTENT 204
+
+#define NOT_FOUND_CODE "404"
+#define HOST "host"
+#define CONTENT_LENGTH "content-length"
+#define TRANSFER_ENCODING "transfer-encoding"
+#define CONTENT_TYPE "content-type"
+#define CHUNKED "chunked"
+#define HTTP_VERSION "HTTP/1.1"
+
 
 #define MSG_BAD_REQUEST "Bad Request"
 #define MSG_OK "OK"
@@ -73,12 +83,18 @@ struct RessourceInfo
 struct ResponseInfos
 {
     int status;
+    // ifstream fileStream;
     string statusMessage;
     map<string, string> headers;
     string location;
     string body;
+    string response_str;
+    size_t bytes_written;
+    size_t bytes_sent;
+    string filePath;
+    string response;
 
-    ResponseInfos() : status(OK), statusMessage(MSG_OK), body("") {}
+    ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response("") {}
     ResponseInfos(int s, const string &sm, const string &b) : status(s), statusMessage(sm), body(b) {}
     ResponseInfos &operator=(const ResponseInfos &r)
     {
@@ -87,6 +103,7 @@ struct ResponseInfos
             status = r.status;
             statusMessage = r.statusMessage;
             headers = r.headers;
+            filePath = r.filePath;
             location = r.location;
             body = r.body;
         }

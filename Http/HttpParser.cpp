@@ -19,11 +19,8 @@ HttpParser::HttpParser() : state(REQUEST_LINE) {}
 
 Request HttpParser::parse(const string &data)
 {
-
-    cout << "Parsing request" << data << endl;
-
     string line;
-    // size_t pos = data.find("\r\n\r\n");
+    bool hasCRLF = false;
     for (size_t i = 0; i < data.size(); ++i)
     {
         if (data[i] == '\r' && state != BODY)
@@ -31,35 +28,33 @@ Request HttpParser::parse(const string &data)
             if (i + 1 < data.size() && data[i + 1] == '\n')
             {
                 i++;
-                processLine(line);
-                line.clear();
+                if (!line.empty())
+                {
+                    processLine(line);
+                    line.clear();
+                }
+                else if (state == HEADER)
+                {
+                    state = BODY;
+                    hasCRLF = true;
+                }
             }
             else
-            {
-                cout << "400 here 1 " << line << endl;
                 throw BAD_REQUEST;
-            }
-        }
-        else if (data[i] == '\n' && state != BODY)
-        {
-            processLine(line);
-            line.clear();
         }
         else
-        {
             line += data[i];
-        }
     }
 
-    // if (!(line.empty() && line.find("\r\n\r\n") && state == BODY))
-    //     throw BAD_REQUEST;
-
+    if (!hasCRLF && state == HEADER)
+        throw BAD_REQUEST;
     if (!line.empty())
-    {
         processLine(line);
-    }
 
     validateHeaders();
+
+    if (state == BODY)
+        parseBody(body);
 
     Request request;
     request.setMethod(method);
@@ -104,7 +99,7 @@ void HttpParser::parseRequestLine(const string &line)
         std::cerr << "Invalid request line: " << line << std::endl;
         throw BAD_REQUEST;
     }
-    if (version != "HTTP/1.1")
+    if (version != HTTP_VERSION)
     {
         throw VERSION_NOT_SUPPORTED;
     }
@@ -132,6 +127,7 @@ void HttpParser::parseHeader(const string &line)
 {
     if (line.empty())
     {
+
         state = BODY;
         return;
     }
@@ -156,36 +152,18 @@ void HttpParser::parseHeader(const string &line)
 void HttpParser::parseBody(const string &body)
 {
 
-    // if (headers.count("Content-Length") > 0)
-    // {
-    //     int content_length = stoi(headers["Content-Length"]);
-    //     if (body.length() < content_length)
-    //     {
-    //         throw BAD_REQUEST;
-    //     }
-    //     query_params = parseParams(body);
-    // }
-    // else
-    // {
-
-    //     // if (body.find("\r\n\n") != string::npos)
-    //     // {
-    //     //     throw BAD_REQUEST;
-    //     // }
-    // }
-
-    return;
+    if (!body.empty() && method == GET)
+        throw BAD_REQUEST;
+ 
 }
 
 void HttpParser::trim(string &str)
 {
-    // Remove leading whitespace
     size_t start = str.find_first_not_of(" \t");
     if (start != string::npos)
     {
         str = str.substr(start);
     }
-    // Remove trailing whitespace
     size_t end = str.find_last_not_of(" \t");
     if (end != string::npos)
     {

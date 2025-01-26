@@ -74,13 +74,26 @@ std::string Request::generateStatusMsg(const int code)
     std::string msg = "";
     switch (code)
     {
-    case 400: msg = "Bad Request";                  break;
-    case 404: msg = "Not Found";                    break;
-    case 405: msg = " Method Not Allowed";          break;
-    case 414: msg = "URI TOO LONG";                 break;
-    case 403: msg = "Forbidden";                    break;
-    case 505: msg = "HTTP Version Not Supported";   break;
-    default:                                        break;
+    case 400:
+        msg = "Bad Request";
+        break;
+    case 404:
+        msg = "Not Found";
+        break;
+    case 405:
+        msg = " Method Not Allowed";
+        break;
+    case 414:
+        msg = "URI TOO LONG";
+        break;
+    case 403:
+        msg = "Forbidden";
+        break;
+    case 505:
+        msg = "HTTP Version Not Supported";
+        break;
+    default:
+        break;
     }
 
     return msg;
@@ -88,6 +101,11 @@ std::string Request::generateStatusMsg(const int code)
 
 const std::string &Request::getHeader(const std::string &key) const
 {
+    static const std::string empty_str = "";
+    if (headers.find(key) == headers.end())
+    {
+        return empty_str;
+    }
     return headers.at(key);
 }
 

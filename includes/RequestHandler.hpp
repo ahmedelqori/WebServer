@@ -27,6 +27,7 @@
 #include "ServerUtils.hpp"
 #include "HttpParser.hpp"
 #include "ConfigParser.hpp"
+#include "Logger.hpp"
 
 class ChunkedUploadState
 {
@@ -98,7 +99,7 @@ private:
 public:
     RequestHandler();
     Request request;
-
+    string reqBuffer;
     ConfigParser server_config;
 
     void handleRequest(int client_sockfd, string req, int epoll_fd);
