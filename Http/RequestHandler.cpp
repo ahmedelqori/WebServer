@@ -86,7 +86,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         ssize_t bytes_read = fileStream.gcount();
         if (bytes_read <= 0)
         {
-            Logger::log(ERROR, "bytes_read == 0");
+            // Logger::log(ERROR, "bytes_read == 0");
             // cout << "bytes_read == 0" << endl;
             fileStream.close();
             cleanupConnection(epoll_fd, current_fd);
