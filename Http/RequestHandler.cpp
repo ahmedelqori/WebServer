@@ -20,6 +20,7 @@ RequestHandler::RequestHandler()
 
 void RequestHandler::cleanupConnection(int epoll_fd, int fd)
 {
+    cout << "Connection closed" << endl;
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
     close(fd);
     responses_info.erase(fd);
@@ -37,7 +38,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (!response_info.headers.empty())
     {
-        fcntl(current_fd, F_SETFL, O_NONBLOCK);
+        // fcntl(current_fd, F_SETFL, O_NONBLOCK);
         // cout << "Hello from headers" << endl;
         Response responseHeaders;
         responseHeaders.setStatus(response_info.status, response_info.statusMessage);
@@ -56,16 +57,18 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (!response_info.body.empty())
     {
-        // cout << "Hello from body" << endl;
+        cout << "Hello from body" << endl;
         ssize_t bytes_sent = send(current_fd, response_info.body.c_str(), response_info.body.length(), 0);
-        if (bytes_sent == -1)
+        if (bytes_sent <= 0)
         {
+            cout << "Failed sending " << endl;
             cleanupConnection(epoll_fd, current_fd);
             return;
         }
         response_info.body = response_info.body.substr(bytes_sent);
         if (response_info.body.empty())
         {
+            cout << "completed" << endl;
             cleanupConnection(epoll_fd, current_fd);
         }
     }
@@ -103,6 +106,8 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         }
         responses_info[current_fd].bytes_written += bytes_sent;
     }
+    else
+        cleanupConnection(epoll_fd,current_fd);
 }
 
 void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
@@ -136,7 +141,7 @@ bool RequestHandler::isNewClient(int client_sockfd)
 }
 void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 {
-
+    // cout << req << endl;
     try
     {
         if (isNewClient(client_sockfd))
@@ -201,7 +206,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                     state.content_remaining = 0;
                     state.total_size = 0;
 
-                    state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
+                    state.upload_path = location.getRoot() + request.getDecodedPath() +"/" + ServerUtils::generateUniqueString() +
                                         ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
@@ -219,12 +224,13 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         }
         else
         {
-            if (reqBuffer.find("\r\n\r\n") == string::npos && request.getBody().empty())
-                return;
+        
+            // if (reqBuffer.find("\r\n\r\n") == string::npos && request.getBody().empty())
+            //     return;
             if (isChunkedRequest(request))
-                processChunkedData(client_sockfd, reqBuffer, epoll_fd);
+                processChunkedData(client_sockfd, req, epoll_fd);
             else
-                processPostData(client_sockfd, reqBuffer, epoll_fd);
+                processPostData(client_sockfd, req, epoll_fd);
         }
     }
     catch (int code)
@@ -505,8 +511,6 @@ void RequestHandler::checkMaxBodySize()
     stringstream ss(contentLenghtStr);
     size_t contentLenght;
     ss >> contentLenght;
-
-    // cout << "max body size " << maxBodySize << " content length " << contentLenght << endl;
     if (contentLenght > maxBodySize)
         throw PAYLOAD_TOO_LARGE;
 }
@@ -556,57 +560,28 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
             // Last chunk
             if (state.partial_request.substr(chunk_header_size).compare(0, 2, "\r\n") == 0)
             {
-                // Valid end
                 state.output_file.close();
-                chunked_uploads.erase(client_sockfd);
-                // state.total_size = 0;
+                state.total_size = 0;
                 responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
                 modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
                 return;
             }
+            else
+                throw BAD_REQUEST;
         }
-        // 5. get content length
-        string contentLenghtStr;
-        try
-        {
-            contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
-        }
-        catch (const std::exception &e)
-        {
-            contentLenghtStr = "0";
-        }
-
-        stringstream ss(contentLenghtStr);
-        size_t contentLength;
-        ss >> contentLength;
+  
         const char *chunk_data = state.partial_request.data() + chunk_header_size;
-        if (state.partial_request.length() >= contentLength)
-        {
-            state.output_file.write(chunk_data, contentLength);
-            state.total_size += contentLength;
-        }
-        else
-        {
             state.output_file.write(chunk_data, chunk_size);
             state.total_size += chunk_size;
-        }
-        // 6.if total size is eq content length should end writing data
-        if (state.total_size >= contentLength)
-        {
-            state.output_file.close();
-            state.total_size = 0;
-            chunked_uploads.erase(client_sockfd);
-            responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
-            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-            return;
-        }
-        // 7.Remove processed chunk
+      
+        // 5.Remove processed chunk
         state.partial_request = state.partial_request.substr(chunk_total_size);
     }
 }
 
 void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
 {
+  
     checkMaxBodySize();
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
@@ -627,7 +602,6 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     if (state.total_size >= contentLenght)
     {
         state.output_file.close();
-        chunked_uploads.erase(client_sockfd);
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
@@ -641,7 +615,6 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
         if (state.total_size >= contentLenght)
         {
             state.output_file.close();
-            chunked_uploads.erase(client_sockfd);
 
             responses_info[client_sockfd] = ServerUtils::ressourceToResponse("", CREATED);
             modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
