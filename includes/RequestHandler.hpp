@@ -100,6 +100,7 @@ public:
     RequestHandler();
     Request request;
     string reqBuffer;
+    bool validCRLF;
     ConfigParser server_config;
 
     void handleRequest(int client_sockfd, string req, int epoll_fd);
