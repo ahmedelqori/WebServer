@@ -99,7 +99,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         // cout << "bytes written " << responses_info[current_fd].bytes_written << " bytes sent " << bytes_sent << endl;
         if (bytes_sent == -1)
         {
-        
+
             fileStream.close();
             cleanupConnection(epoll_fd, current_fd);
             return;
@@ -107,7 +107,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         responses_info[current_fd].bytes_written += bytes_sent;
     }
     else
-        cleanupConnection(epoll_fd,current_fd);
+        cleanupConnection(epoll_fd, current_fd);
 }
 
 void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
@@ -157,6 +157,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
             if (isChunkedRequest(request))
             {
+                if (request.hasHeader(CONTENT_LENGTH))
+                    throw BAD_REQUEST;
 
                 LocationConfig location;
                 if (this->matchLocation(location, request.getDecodedPath(), request))
@@ -198,6 +200,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                     responses_info[client_sockfd] = response;
 
                     modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+                    return;
                 }
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
@@ -206,7 +209,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                     state.content_remaining = 0;
                     state.total_size = 0;
 
-                    state.upload_path = location.getRoot() + request.getDecodedPath() +"/" + ServerUtils::generateUniqueString() +
+                    state.upload_path = location.getRoot() + request.getDecodedPath() + "/" + ServerUtils::generateUniqueString() +
                                         ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
@@ -224,11 +227,16 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         }
         else
         {
-        
+
             // if (reqBuffer.find("\r\n\r\n") == string::npos && request.getBody().empty())
             //     return;
+
             if (isChunkedRequest(request))
+            {
+                if (request.hasHeader(CONTENT_LENGTH))
+                    throw BAD_REQUEST;
                 processChunkedData(client_sockfd, req, epoll_fd);
+            }
             else
                 processPostData(client_sockfd, req, epoll_fd);
         }
@@ -453,6 +461,16 @@ static ServerConfig getServer(ConfigParser configParser, std::string host)
         if (!host.empty() && server.str() == host)
             return currentServers[i];
     }
+    i = INDEX;
+    while (++i < currentServers.size())
+    {
+        int j = INDEX;
+        while (++j < currentServers[i].getServerNames().size())
+        {
+            if (!host.empty() && currentServers[i].getServerNames()[j] == host)
+                return currentServers[i];
+        }
+    }
 
     return currentServers[0];
 }
@@ -569,11 +587,11 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
             else
                 throw BAD_REQUEST;
         }
-  
+
         const char *chunk_data = state.partial_request.data() + chunk_header_size;
-            state.output_file.write(chunk_data, chunk_size);
-            state.total_size += chunk_size;
-      
+        state.output_file.write(chunk_data, chunk_size);
+        state.total_size += chunk_size;
+
         // 5.Remove processed chunk
         state.partial_request = state.partial_request.substr(chunk_total_size);
     }
@@ -581,7 +599,7 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 
 void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
 {
-  
+
     checkMaxBodySize();
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
