@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/01 13:08:10 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/01 13:17:33 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -152,12 +152,9 @@ void Server::processData(int index)
 
     if (bytesReceived <= 0)
     {
-        if (bytesReceived == 0 || errno != EAGAIN)
-        {
-            epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
-            close(events[index].data.fd);
-            std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
-        }
+        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
+        close(events[index].data.fd);
+        std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
         return;
     }
     requestData.append(buffer, bytesReceived);
