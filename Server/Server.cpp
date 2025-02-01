@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/25 14:00:04 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/01 13:17:33 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,12 +55,10 @@ void Server::createSockets()
 
     while (++index < this->res.size())
     {
-        sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype, this->res[index]->ai_protocol);
+        sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype | SOCK_NONBLOCK, this->res[index]->ai_protocol);
         if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
         if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEADDR");
         if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
-        flags = fcntl(sockFD, F_GETFL, 0);
-        if (fcntl(sockFD, F_SETFL, flags | O_NONBLOCK) < 0) Error(2, "Error Server:: ", "fcntl - non-blocking");
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
@@ -114,18 +112,6 @@ void Server::registerAllSockets()
     }
 }
 
-void Server::NonBLockingCLient(int clientFD)
-{
-    int flags;
-
-    flags = fcntl(clientFD, F_GETFL, 0);
-    if (fcntl(clientFD, F_SETFL, flags | O_NONBLOCK) < 0)
-    {
-        close(clientFD);
-        Error(2, "Error Server:: ", "fcntl - O_NONBLOCK for clientFD");
-    }
-}
-
 void Server::addClientToEpoll(int clientFD)
 {
     struct epoll_event event;
@@ -152,7 +138,6 @@ void Server::acceptConnection(int index)
         if (errno != EAGAIN && errno != EWOULDBLOCK) Error(2, "Error Server:: ", "accept");
         return;
     }
-    this->NonBLockingCLient(acceptFD);
     this->addClientToEpoll(acceptFD);
 }
 
@@ -167,12 +152,9 @@ void Server::processData(int index)
 
     if (bytesReceived <= 0)
     {
-        if (bytesReceived == 0 || errno != EAGAIN)
-        {
-            epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
-            close(events[index].data.fd);
-            std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
-        }
+        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
+        close(events[index].data.fd);
+        std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
         return;
     }
     requestData.append(buffer, bytesReceived);
