@@ -3,6 +3,8 @@
 #include <map>
 #include "Request.hpp"
 #include "MyType.hpp"
+#include <iostream>
+#include <sstream>
 
 class HttpParser {
 public:
