@@ -3,17 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   HttpParser.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:20 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/01/31 19:22:06 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/HttpParser.hpp"
-#include <iostream>
-#include <sstream>
-#include <set>
+
 
 HttpParser::HttpParser() : state(REQUEST_LINE) {}
 
@@ -25,9 +23,13 @@ Request HttpParser::parse(const string &data)
     {
         if (data[i] == '\r' && state != BODY)
         {
+            if (state == REQUEST_LINE && data[i - 1] && data[i - 1] == ' ')
+                throw BAD_REQUEST;
             if (i + 1 < data.size() && data[i + 1] == '\n')
             {
                 i++;
+                if (data[i + 1] == ' ')
+                    throw BAD_REQUEST;
                 if (!line.empty())
                 {
                     processLine(line);
@@ -53,8 +55,8 @@ Request HttpParser::parse(const string &data)
 
     validateHeaders();
 
-    if (state == BODY)
-        parseBody(body);
+    // if (state == BODY)
+    //     parseBody(body);
 
     Request request;
     request.setMethod(method);
@@ -85,7 +87,7 @@ void HttpParser::processLine(const string &line)
 
 bool HttpParser::isChunkedData()
 {
-    return (headers.count("Transfer-Encoding") > 0 && headers["Transfer-Encoding"] == "chunked");
+    return (headers.count(TRANSFER_ENCODING) > 0 && headers[TRANSFER_ENCODING] == CHUNKED);
 }
 
 void HttpParser::parseRequestLine(const string &line)
@@ -127,7 +129,6 @@ void HttpParser::parseHeader(const string &line)
 {
     if (line.empty())
     {
-
         state = BODY;
         return;
     }
@@ -142,6 +143,9 @@ void HttpParser::parseHeader(const string &line)
     string name = line.substr(0, separator);
     string value = line.substr(separator + 1);
 
+    if ((!value.empty() && value[0] != ' ') ||  value[1] == ' ')
+        throw BAD_REQUEST;
+
     trim(name);
     lowerString(name);
     trim(value);
@@ -153,8 +157,7 @@ void HttpParser::parseBody(const string &body)
 {
 
     if (!body.empty() && method == GET)
-        throw BAD_REQUEST;
- 
+        return;
 }
 
 void HttpParser::trim(string &str)
@@ -173,7 +176,7 @@ void HttpParser::trim(string &str)
 
 void HttpParser::validateHeaders()
 {
-    if (!headers.count("host"))
+    if (!headers.count(HOST))
         throw BAD_REQUEST;
 }
 
