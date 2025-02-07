@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/23 23:04:57 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/07 20:56:18 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,7 +101,6 @@ map<string, string> CGI::createHeader(string output)
 	return header;
 }
 
-
 string to_string(int n)
 {
 	stringstream ss;
@@ -121,32 +120,34 @@ void CGI::setupEnvironment(const Request &req)
 	env["SERVER_NAME"] = "localhost";
 	if (req.getMethod() == "POST")
 	{
-        env["CONTENT_LENGTH"] = to_string(req.getBody().size());
-		  const map<string, string>& headers = req.getHeaders();
-    	map<string, string>::const_iterator contentType = headers.find("Content-Type");
-    	if (contentType != headers.end()) 
+		env["CONTENT_LENGTH"] = to_string(req.getBody().size());
+		const map<string, string> &headers = req.getHeaders();
+		map<string, string>::const_iterator contentType = headers.find("Content-Type");
+		if (contentType != headers.end())
 		{
-    	    env["CONTENT_TYPE"] = contentType->second;
-    	}
-    }
+			env["CONTENT_TYPE"] = contentType->second;
+		}
+	}
 	size_t questionMarkPos = req.getPath().find('?');
 	env["QUERY_STRING"] = req.getPath().substr(questionMarkPos + 1);
 
 	string queryString;
 	map<string, string> queryParams = req.getQueryParams();
-	for (map<string, string>::const_iterator it = queryParams.begin(); it != queryParams.end(); ++it) {
-		if (!queryString.empty()) {
+	for (map<string, string>::const_iterator it = queryParams.begin(); it != queryParams.end(); ++it)
+	{
+		if (!queryString.empty())
+		{
 			queryString += "&";
 		}
 		queryString += it->first + "=" + it->second;
 	}
 	env["QUERY_STRING"] = queryString;
 	env["SCRIPT_NAME"] = req.getPath();
-	
+
 	// Add path information
 	env["PATH_INFO"] = env["SCRIPT_NAME"];
-	string pathtranslated = "/home/sultane/Desktop/WebServer/www/" + req.getPath();
-	env["PATH_TRANSLATED"] =  pathtranslated; // You'll need to implement getServerRoot()
+	string pathtranslated = "www" + req.getPath();
+	env["PATH_TRANSLATED"] = pathtranslated; // You'll need to implement getServerRoot()
 	env["SCRIPT_FILENAME"] = env["PATH_TRANSLATED"];
 
 	// Add redirect status for PHP-CGI
@@ -169,6 +170,16 @@ void CGI::setupEnvironment(const Request &req)
 		}
 	}
 
+ 	map<string, string>::const_iterator cookieIt = req.getHeaders().find("Cookie");
+    if (cookieIt != req.getHeaders().end()) {
+        map<string, string> cookies = parseCookies(cookieIt->second);
+        string cookieStr;
+        for (map<string, string>::const_iterator it = cookies.begin(); it != cookies.end(); ++it) {
+            if (!cookieStr.empty()) cookieStr += "; ";
+            cookieStr += it->first + "=" + it->second;
+        }
+        env["HTTP_COOKIE"] = cookieStr;
+    }
 	// Debug output
 	// cout << "CGI Environment Variables:" << endl;
 	// for (const auto &pair : env)
@@ -185,6 +196,7 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 		throw CGIException("Error: CGI: Pipe failed");
 	}
 
+	string cgi_path = "/usr/bin/php-cgi";
 	if ((childPid = fork()) == -1)
 	{
 		throw CGIException("Error: CGI: Fork failed");
@@ -193,7 +205,6 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 	setupEnvironment(request);
 	if (!childPid)
 	{
-		// Child process
 		if (dup2(inputPipe[0], STDIN_FILENO) == -1 || dup2(outputPipe[1], STDOUT_FILENO) == -1 || dup2(stderrPipe[1], STDERR_FILENO) == -1)
 			throw CGIException("Error: CGI: Dup2 failed");
 
@@ -204,13 +215,11 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 		close(stderrPipe[0]);
 		close(stderrPipe[1]);
 
-		// Set up args for Python script
 		char *argv[] = {
-			(char *)cgi.c_str(),					  // Python interpreter path
-			(char *)request.getDecodedPath().c_str(), // Script path
+			strdup("/usr/bin/php-cgi"),
+			(char *)cgi.c_str(),
 			NULL};
 
-		// Convert environment variables to char* array
 		vector<string> envStrings;
 		for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
 		{
@@ -225,19 +234,17 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 		envp[envStrings.size()] = NULL;
 
 		execve("/usr/bin/php-cgi", argv, envp);
-
-		// Clean up if execve fails
+		perror("execve failed");
 		for (size_t i = 0; envp[i] != NULL; i++)
 		{
 			free(envp[i]);
 		}
 		delete[] envp;
 
-		exit(1); // Exit if execve fails
+		exit(1);
 	}
 	else
 	{
-		// Parent process
 		close(inputPipe[0]);
 		close(outputPipe[1]);
 		if (!request.getBody().empty())
@@ -252,15 +259,13 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 				cout << "Wrote " << written << " bytes of POST data to CGI script" << endl;
 			}
 		}
-		
+
 		close(inputPipe[1]);
 		close(stderrPipe[1]);
-		// Wait for child process
 		cout << "Waiting for child process to finish" << endl;
 		int status;
 		waitpid(childPid, &status, 0);
 
-		// Check if process exited normally
 		if (WIFEXITED(status))
 		{
 			int exitStatus = WEXITSTATUS(status);
@@ -268,7 +273,7 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 			{
 				cout << "exitStatus: " << exitStatus << endl;
 				ResponseInfos response;
-				response.setStatus(INTERNAL_SERVER_ERROR); // Set 500 status
+				response.setStatus(INTERNAL_SERVER_ERROR);
 				response.setStatusMessage(MSG_INTERNAL_SERVER_ERROR);
 				return response;
 			}
@@ -277,83 +282,109 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 
 	cout << "Parsing CGI output" << endl;
 	ResponseInfos response;
-    
-    try 
+
+	try
 	{
-        string output = getResponse();
+		string output = getResponse();
 		cout << "Output: " << output << endl;
-        if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos) 
+		if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
 		{
-            response.setStatus(FORBIDEN);
+			response.setStatus(FORBIDEN);
 			response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
 			response.setBody(normalOutput);
 			cout << "PHP Warning or Error found" << endl;
-            return response;
-        }
-        response = parseOutput(output);
-    } 
-	catch (const exception& e) 
-	{
-        response.setStatus(INTERNAL_SERVER_ERROR);
-        response.setBody("CGI Processing Error");
-    }
-	return response;
-}
-
-string CGI::getResponse()
-{
-	string response;
-	char buffer[4096];
-	ssize_t bytesRead;
-
-	fcntl(outputPipe[0], O_NONBLOCK);
-	fcntl(stderrPipe[0], O_NONBLOCK);
-	struct timeval tv;
-	tv.tv_sec = 30;
-	tv.tv_usec = 0;
-
-	fd_set readfds;
-	FD_ZERO(&readfds);
-	FD_SET(outputPipe[0], &readfds);
-
-	fd_set errfds;
-	FD_ZERO(&errfds);
-	FD_SET(stderrPipe[0], &errfds);
-	
-	while (select(stderrPipe[0] + 1, &errfds, NULL, NULL, &tv) > 0)
-	{
-		bytesRead = read(stderrPipe[0], buffer, sizeof(buffer));
-		if (bytesRead > 0)
-			response.append(buffer, bytesRead);
-		else if (bytesRead == 0)
-			break;
-	}
-	response.append("\n");
-	while (select(outputPipe[0] + 1, &readfds, NULL, NULL, &tv) > 0)
-	{
-		bytesRead = read(outputPipe[0], buffer, sizeof(buffer));
-		if (bytesRead > 0)
-		{
-			response.append(buffer, bytesRead);
-			normalOutput.append(buffer, bytesRead);
+			return response;
 		}
-		else if (bytesRead == 0)
-			break;
+		response = parseOutput(output);
 	}
-	ofstream outFile("cgi_output.txt");
-	if (outFile.is_open())
+	catch (const exception &e)
 	{
-		outFile << response;
-		outFile.close();
-	}
-	else
-	{
-		cerr << "Error: Unable to open file for writing CGI response" << endl;
+		response.setStatus(INTERNAL_SERVER_ERROR);
+		response.setBody("CGI Processing Error");
 	}
 	return response;
 }
 
+string CGI::getResponse() 
+{
+    string response;
+    char buffer[4096];
+    ssize_t bytesRead;
+    
+    while ((bytesRead = read(stderrPipe[0], buffer, sizeof(buffer))) > 0) {
+        response.append(buffer, bytesRead);
+    }
+    response.append("\n");
+    
+    while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {
+        response.append(buffer, bytesRead);
+        normalOutput.append(buffer, bytesRead);
+    }
 
+    ofstream outFile("cgi_output.txt");
+    if (outFile.is_open()) {
+        outFile << response;
+        outFile.close();
+    } else {
+        cerr << "Error: Unable to open file for writing CGI response" << endl;
+    }
+    
+    return response;
+}
+
+
+// string CGI::getResponse()
+// {
+// 	string response;
+// 	char buffer[4096];
+// 	ssize_t bytesRead;
+
+// 	fcntl(outputPipe[0], O_NONBLOCK);
+// 	fcntl(stderrPipe[0], O_NONBLOCK);
+// 	struct timeval tv;
+// 	tv.tv_sec = 30;
+// 	tv.tv_usec = 0;
+
+// 	fd_set readfds;
+// 	FD_ZERO(&readfds);
+// 	FD_SET(outputPipe[0], &readfds);
+
+// 	fd_set errfds;
+// 	FD_ZERO(&errfds);
+// 	FD_SET(stderrPipe[0], &errfds);
+
+// 	while (select(stderrPipe[0] + 1, &errfds, NULL, NULL, &tv) > 0)
+// 	{
+// 		bytesRead = read(stderrPipe[0], buffer, sizeof(buffer));
+// 		if (bytesRead > 0)
+// 			response.append(buffer, bytesRead);
+// 		else if (bytesRead == 0)
+// 			break;
+// 	}
+// 	response.append("\n");
+// 	while (select(outputPipe[0] + 1, &readfds, NULL, NULL, &tv) > 0)
+// 	{
+// 		bytesRead = read(outputPipe[0], buffer, sizeof(buffer));
+// 		if (bytesRead > 0)
+// 		{
+// 			response.append(buffer, bytesRead);
+// 			normalOutput.append(buffer, bytesRead);
+// 		}
+// 		else if (bytesRead == 0)
+// 			break;
+// 	}
+// 	ofstream outFile("cgi_output.txt");
+// 	if (outFile.is_open())
+// 	{
+// 		outFile << response;
+// 		outFile.close();
+// 	}
+// 	else
+// 	{
+// 		cerr << "Error: Unable to open file for writing CGI response" << endl;
+// 	}
+// 	return response;
+// }
 
 ResponseInfos CGI::parseOutput(string output)
 {
@@ -390,7 +421,14 @@ ResponseInfos CGI::parseOutput(string output)
 				while (!value.empty() && isspace(value[0]))
 					value = value.substr(1);
 
-				response.addHeader(key, value);
+				if (key == "Set-Cookie")
+				{
+                    response.addHeader("Set-Cookie", value);
+                } 
+				else 
+				{
+                    response.addHeader(key, value);
+                }
 			}
 			pos = nextPos + 1;
 		}
@@ -406,6 +444,25 @@ ResponseInfos CGI::parseOutput(string output)
 
 	return response;
 }
+
+map<string, string> CGI::parseCookies(const string& cookieHeader) {
+    map<string, string> cookies;
+    size_t start = 0;
+    size_t end;
+    
+    while ((end = cookieHeader.find(';', start)) != string::npos) {
+        string cookie = cookieHeader.substr(start, end - start);
+        size_t equal = cookie.find('=');
+        if (equal != string::npos) {
+            string key = cookie.substr(0, equal);
+            string value = cookie.substr(equal + 1);
+            cookies[key] = value;
+        }
+        start = end + 1;
+    }
+    return cookies;
+}
+
 
 
 // ResponseInfos CGI::parseOutput(string output) {
@@ -435,7 +492,7 @@ ResponseInfos CGI::parseOutput(string output)
 //             if (colonPos != string::npos) {
 //                 string key = line.substr(0, colonPos);
 //                 string value = line.substr(colonPos + 1);
-                
+
 //                 // Trim whitespace
 //                 value.erase(0, value.find_first_not_of(" \t"));
 //                 value.erase(value.find_last_not_of(" \t") + 1);
