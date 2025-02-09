@@ -66,7 +66,7 @@ void                            Error(int count, ...);
 #define W_REDIRECTION               "redirect"
 #define W_AUTO_INDEX                "auto_index"
 #define W_INDEX                     "index"
-
+#define W_CGI                       "cgi_extension"
 #define GET                         "GET"
 #define POST                        "POST"
 #define DELETE                      "DELETE"
