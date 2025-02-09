@@ -42,6 +42,7 @@ enum  LocationsState
     AUTO_INDEX,
     INDEX_FILE,
     PATH_INFO,
+    CGI_EXT,
     END_LOCATION
 };
 
@@ -68,6 +69,7 @@ class LocationConfig
         std::string                             redirectionPath;
         std::string                             indexFile;
         std::vector <std::string>               methods;
+        std::map<std::string, std::string>      cgiExtension;
     public:
         int                                     getRedirectionCode() const;
         bool                                    getDirectoryListing() const;
@@ -76,6 +78,7 @@ class LocationConfig
         std::string                             getIndexFile() const;
         std::string                             getRedirectionPath() const;
         std::vector<std::string>                getMethods() const;
+        std::map<std::string, std::string>      getCgiExtension() const;
 
         void                                    setDirectoryListing(bool b);
         void                                    setPath(std::string path); 
@@ -84,6 +87,7 @@ class LocationConfig
         void                                    setRedirectionCode(int statusCode);
         void                                    setRedirectionPath(std::string path);
         void                                    setIndexFile(std::string index);
+        void                                    setCgiExtension(std::string ext, std::string path);
 
 };
 
@@ -157,8 +161,7 @@ class ConfigParser
         void                                    handleRedirectionState();
         void                                    handleDirectoryListingState();
         void                                    handleIndexFileState();
-        
-        void                                    printHttp();
+        void                                    handleCgiExtension();
 };
 
 #endif

@@ -223,6 +223,7 @@ void    ConfigParser::parseLocations()
             case REDIRECTION    :       this->handleRedirectionState()      ;       break;
             case AUTO_INDEX     :       this->handleDirectoryListingState() ;       break;
             case INDEX_FILE     :       this->handleIndexFileState()        ;       break;
+            case CGI_EXT        :       this->handleCgiExtension()          ;       break;
             default             :                                                   break;
         }
     }
@@ -326,11 +327,23 @@ void    ConfigParser::handleIndexFileState()
 
     if (!this->servers[this->current].getLocations()[index].getIndexFile().empty()) Error(3,ERR_SYNTAX, ERR_DUPLICATED, W_INDEX);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
-    if (Array[0] != W_INDEX) {(this->currentLocationState = PATH, this->index--); return ;};
+    if (Array[0] != W_INDEX) {(this->currentLocationState = CGI_EXT, this->index--); return ;};
     if (Array.size() != 2 || Array[0] != W_INDEX) Error(2, ERR_SYNTAX, W_INDEX);
     this->servers[this->current].getLocations()[index].setIndexFile(Array[1]);
-    this->currentLocationState = PATH;
+    this->currentLocationState = CGI_EXT;
 }
+
+void   ConfigParser::handleCgiExtension()
+{
+    int                         index  = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
+
+    Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
+    if (Array[0] != W_CGI) {(this->currentLocationState = PATH, this->index--); return ;};
+    if (Array.size() != 3) Error(2, ERR_SYNTAX, W_CGI);
+    this->servers[this->current].getLocations()[index].setCgiExtension(Array[1], Array[2]);
+}
+
 
 int                                 ServerConfig::getPort() const                                       {    return this->port;}
 std::vector<int>                    ServerConfig::getPorts() const                                      {    return this->ports;};
@@ -347,6 +360,7 @@ std::string                         LocationConfig::getIndexFile() const        
 std::string                         LocationConfig::getRedirectionPath() const                          {    return this->redirectionPath;}
 int                                 LocationConfig::getRedirectionCode() const                          {    return this->redirectionCode;}
 bool                                LocationConfig::getDirectoryListing() const                         {    return this->directoryListing;}
+std::map<std::string, std::string>  LocationConfig::getCgiExtension() const                             {    return this->cgiExtension;};
 
 
 void                                ServerConfig::setPort(int port)                                     {    this->port = port;}
@@ -364,41 +378,4 @@ void                                LocationConfig::setDirectoryListing(bool b) 
 void                                LocationConfig::setIndexFile(std::string index)                     {    this->indexFile = index;}
 void                                LocationConfig::setRedirectionCode(int statusCode)                  {    this->redirectionCode = statusCode;}
 void                                LocationConfig::setRedirectionPath(std::string path)                {    this->redirectionPath = path;}
-
-
-/// Moment of the truth
-
-// void        ConfigParser::printHttp()
-// {
-//     std::cout << "http\n";
-//     int i = 0 ;
-//     while (i < servers.size())
-//     {
-//         int index = -1;
-//         std::cout << "Host: " << this->servers[i].getHost() << std::endl;
-//         std::cout << "Port: " << this->servers[i].getPort() << std::endl;
-//         while (++index < this->servers[i].getServerNames().size())
-//             std::cout << "Servername => "<<this->servers[i].getServerNames()[index] << std::endl;
-//         index = -1;
-//         while (++index < this->servers[i].getErrorPages().size())
-//             std::cout << "Code: " << this->servers[i].getErrorPages()["404"] << " File: "  << std::endl;
-//         std::cout << "Client max body size: " << this->servers[i].getClientMaxBodySize() << std::endl;
-       
-//         index = -1;
-//         std::cout << this->servers[i].getLocations().size() << std::endl;
-//         while (++index < this->servers[i].getLocations().size())
-//         {
-//             int j = -1;
-//             std::cout << "location: " << this->servers[i].getLocations()[index].getPath() << std::endl;
-//             while (++j < this->servers[i].getLocations()[index].getMethods().size())
-//                 std::cout << "\t" << this->servers[i].getLocations()[index].getMethods()[j] << "\t";
-//             std::cout << "\nRoot: " << this->servers[i].getLocations()[index].getRoot();
-//             std::cout << "\nRedirect: " << this->servers[i].getLocations()[index].getRedirectionCode() << "\t" << this->servers[i].getLocations()[index].getRedirectionPath() << std::endl;
-//             std::cout << "\nauto-index: " << this->servers[i].getLocations()[index].getDirectoryListing();
-//             std::cout << "\nIndexFile: " << this->servers[i].getLocations()[index].getIndexFile();
-           
-//             std::cout << "\n =============== \n";  
-//         }
-//         i++;
-//     }
-// }
+void                                LocationConfig::setCgiExtension(std::string ext, std::string path)  {    this->cgiExtension.insert(std::make_pair(ext, path));}
