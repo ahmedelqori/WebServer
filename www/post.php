@@ -1,6 +1,6 @@
 <?php
 // URL of the CGI script
-$cgiUrl = "http://127.0.0.3:1337/post.cgi";
+$cgiUrl = "http://127.0.0.3:1337/post.ccxvgi";
 
 // Data to send via POST
 $postData = array(
