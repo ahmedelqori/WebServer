@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/22 21:59:35 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/10 19:07:38 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (!response_info.headers.empty())
     {
-  
+
         Response responseHeaders;
         responseHeaders.setStatus(response_info.status, response_info.statusMessage);
         for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
@@ -48,7 +48,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         }
 
         string responseHeadersStr = responseHeaders.getResponse();
-     
+
         ssize_t bytes_sent = send(current_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
         response_info.headers.clear();
         responses_info[current_fd].bytes_written = 0;
@@ -57,18 +57,18 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (!response_info.body.empty())
     {
-   
+        cout << "hello from handling body" << endl;
         ssize_t bytes_sent = send(current_fd, response_info.body.c_str(), response_info.body.length(), 0);
         if (bytes_sent <= 0)
         {
-         
+
             cleanupConnection(epoll_fd, current_fd);
             return;
         }
         response_info.body = response_info.body.substr(bytes_sent);
         if (response_info.body.empty())
         {
-        
+
             cleanupConnection(epoll_fd, current_fd);
         }
     }
@@ -88,7 +88,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         ssize_t bytes_read = fileStream.gcount();
         if (bytes_read <= 0)
         {
-           
+
             fileStream.close();
             cleanupConnection(epoll_fd, current_fd);
             return;
@@ -146,7 +146,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             if (!validCRLF)
             {
                 if (reqBuffer.find(CRLF_CRLF) == string::npos)
-                    return;               
+                    return;
                 else
                     validCRLF = true;
             }
@@ -182,28 +182,21 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
                 LocationConfig location;
 
                 string url = request.getDecodedPath();
-                if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
-                {
-                    CGI cgi;
 
-                    ResponseInfos response;
-                    response = cgi.execute(request, url);
-                    cout << "response: ..........................." << endl;
-                    cout << "response: " << response.status << endl;
-                    cout << "response: " << response.statusMessage << endl;
-                    for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
-                    {
-                        cout << "response header: " << it->first << ": " << it->second << endl;
-                    }
-                    cout << "response: " << response.body << endl;
-                    cout << "get response" << endl;
-                    responses_info[client_sockfd] = response;
-
-                    modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-                    return;
-                }
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
+                    if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
+                    {
+                        CGI cgi;
+
+                        ResponseInfos response;
+                        response = cgi.execute(request, url, location.getCgiExtension(), location.getRoot());
+
+                        responses_info[client_sockfd] = response;
+
+                        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+                        return;
+                    }
                     ChunkedUploadState state;
                     state.headers_parsed = true;
                     state.content_remaining = 0;
@@ -283,23 +276,59 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
+
+    if (!matchLocation(bestMatch, url, request))
+    {
+        if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
+        {
+            try
+            {
+                map<string, string> cgi_info = bestMatch.getCgiExtension();
+                map<string, string>::iterator it = cgi_info.begin();
+                cout << "CGI Extenstion INFO 1" << endl;
+                for (; it != cgi_info.end(); it++)
+                {
+                    cout << it->first << " : " << it->second << endl;
+                }
+                CGI cgi;
+                ResponseInfos response;
+                response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+                cout << response << endl;
+                return response;
+            }
+            catch (CGIException &e)
+            {
+                std::cerr << "CGI: ERROR : " << e.what() << '\n';
+            }
+            catch (exception &e)
+            {
+                std::cerr << "CGI: ERROR : " << e.what() << '\n';
+            }
+        }
+        string f_path = bestMatch.getRoot() + url;
+        ressource.autoindex = bestMatch.getDirectoryListing();
+        ressource.redirect = "";
+        ressource.path = f_path;
+        ressource.root = bestMatch.getRoot();
+        ressource.url = url;
+        return serveRessourceOrFail(ressource);
+    }
+
     if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
     {
-        cout << "start processing cgi req" << endl;
         try
         {
+            map<string, string> cgi_info = bestMatch.getCgiExtension();
+            map<string, string>::iterator it = cgi_info.begin();
+            cout << "CGI Extenstion INFO 2" << endl;
+            for (; it != cgi_info.end(); it++)
+            {
+                cout << it->first << " : " << it->second << endl;
+            }
             CGI cgi;
             ResponseInfos response;
-            response = cgi.execute(request, url);
-            cout << "response: ..........................." << endl;
-            cout << "response: " << response.status << endl;
-            cout << "response: " << response.statusMessage << endl;
-            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
-            {
-                cout << "response header: " << it->first << ": " << it->second << endl;
-            }
-            cout << "response: " << response.body << endl;
-            cout << "get response" << endl;
+            response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+            cout << response << endl;
             return response;
         }
         catch (CGIException &e)
@@ -310,19 +339,6 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         {
             std::cerr << "CGI: ERROR : " << e.what() << '\n';
         }
-
-    }
-
-    if (!matchLocation(bestMatch, url, request))
-    {
-
-        string f_path = bestMatch.getRoot() + url;
-        ressource.autoindex = bestMatch.getDirectoryListing();
-        ressource.redirect = "";
-        ressource.path = f_path;
-        ressource.root = bestMatch.getRoot();
-        ressource.url = url;
-        return serveRessourceOrFail(ressource);
     }
 
     string fullPath = bestMatch.getRoot() + url;

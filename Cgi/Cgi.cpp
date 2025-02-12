@@ -6,13 +6,14 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/07 20:56:18 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/11 19:29:59 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Cgi.hpp"
 #include <algorithm>
 #include <string>
+#include <sys/time.h>
 
 CGI::CGI() : workingDir(""), uploadDir(""), childPid(0)
 {
@@ -41,16 +42,6 @@ CGI::~CGI()
 	{
 		kill(childPid, SIGKILL);
 		waitpid(childPid, NULL, 0);
-	}
-
-	for (size_t i = 0; i < 2; i++)
-	{
-		if (inputPipe[i] != -1)
-			close(inputPipe[i]);
-		if (outputPipe[i] != -1)
-			close(outputPipe[i]);
-		if (stderrPipe[i] != -1)
-			close(stderrPipe[i]);
 	}
 }
 void CGI::processUpload(const string &uploadPath)
@@ -112,7 +103,6 @@ void CGI::setupEnvironment(const Request &req)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
 
-	// Basic CGI variables
 	env["REQUEST_METHOD"] = req.getMethod();
 	env["SERVER_PROTOCOL"] = req.getVersion();
 	env["SERVER_SOFTWARE"] = "Webserv/1.0";
@@ -144,16 +134,13 @@ void CGI::setupEnvironment(const Request &req)
 	env["QUERY_STRING"] = queryString;
 	env["SCRIPT_NAME"] = req.getPath();
 
-	// Add path information
 	env["PATH_INFO"] = env["SCRIPT_NAME"];
 	string pathtranslated = "www" + req.getPath();
-	env["PATH_TRANSLATED"] = pathtranslated; // You'll need to implement getServerRoot()
+	env["PATH_TRANSLATED"] = pathtranslated;
 	env["SCRIPT_FILENAME"] = env["PATH_TRANSLATED"];
 
-	// Add redirect status for PHP-CGI
 	env["REDIRECT_STATUS"] = "200";
 
-	// Process headers
 	map<string, string>::const_iterator it1 = req.getHeaders().begin();
 	if (it1 != req.getHeaders().end())
 	{
@@ -170,16 +157,19 @@ void CGI::setupEnvironment(const Request &req)
 		}
 	}
 
- 	map<string, string>::const_iterator cookieIt = req.getHeaders().find("Cookie");
-    if (cookieIt != req.getHeaders().end()) {
-        map<string, string> cookies = parseCookies(cookieIt->second);
-        string cookieStr;
-        for (map<string, string>::const_iterator it = cookies.begin(); it != cookies.end(); ++it) {
-            if (!cookieStr.empty()) cookieStr += "; ";
-            cookieStr += it->first + "=" + it->second;
-        }
-        env["HTTP_COOKIE"] = cookieStr;
-    }
+	map<string, string>::const_iterator cookieIt = req.getHeaders().find("Cookie");
+	if (cookieIt != req.getHeaders().end())
+	{
+		map<string, string> cookies = parseCookies(cookieIt->second);
+		string cookieStr;
+		for (map<string, string>::const_iterator it = cookies.begin(); it != cookies.end(); ++it)
+		{
+			if (!cookieStr.empty())
+				cookieStr += "; ";
+			cookieStr += it->first + "=" + it->second;
+		}
+		env["HTTP_COOKIE"] = cookieStr;
+	}
 	// Debug output
 	// cout << "CGI Environment Variables:" << endl;
 	// for (const auto &pair : env)
@@ -189,36 +179,50 @@ void CGI::setupEnvironment(const Request &req)
 	cout << "End of CGI Environment Variables" << endl;
 }
 
-ResponseInfos CGI::execute(const Request request, const string &cgi)
+ResponseInfos CGI::execute(const Request request, const string &cgi, map<string, string> cgi_info, string root)
 {
-	if (pipe(inputPipe) == -1 || pipe(outputPipe) == -1 || pipe(stderrPipe) == -1)
+	string cgi_path = "/usr/bin/php-cgi";
+	if (cgi.find(".php") != string::npos)
 	{
-		throw CGIException("Error: CGI: Pipe failed");
+		cgi_path = "/usr/bin/php-cgi";
+	}
+	else if (cgi.find(".py") != string::npos)
+	{
+		cgi_path = "/usr/bin/python3";
 	}
 
-	string cgi_path = "/usr/bin/php-cgi";
+	setupEnvironment(request);
+
+	pid_t parentPid = getpid();
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	long long timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
+	string uniqueSuffix = to_string(parentPid) + "_" + to_string(timestamp);
+	inputFileName = "cgi_input_" + uniqueSuffix + ".txt";
+	outputFileName = "cgi_output_" + uniqueSuffix + ".txt";
+	errorFileName = "cgi_error_" + uniqueSuffix + ".txt";
+
 	if ((childPid = fork()) == -1)
 	{
 		throw CGIException("Error: CGI: Fork failed");
 	}
-
-	setupEnvironment(request);
 	if (!childPid)
 	{
-		if (dup2(inputPipe[0], STDIN_FILENO) == -1 || dup2(outputPipe[1], STDOUT_FILENO) == -1 || dup2(stderrPipe[1], STDERR_FILENO) == -1)
-			throw CGIException("Error: CGI: Dup2 failed");
+		FILE *inputFile = freopen(inputFileName.c_str(), "w+b", stdin);
+		FILE *outputFile = freopen(outputFileName.c_str(), "w+b", stdout);
+		FILE *errorFile = freopen(errorFileName.c_str(), "w+b", stderr);
 
-		close(inputPipe[0]);
-		close(inputPipe[1]);
-		close(outputPipe[0]);
-		close(outputPipe[1]);
-		close(stderrPipe[0]);
-		close(stderrPipe[1]);
+		if (!inputFile || !outputFile || !errorFile)
+		{
+			perror("freopen failed");
+			exit(1);
+		}
 
-		char *argv[] = {
-			strdup("/usr/bin/php-cgi"),
-			(char *)cgi.c_str(),
-			NULL};
+		if (!request.getBody().empty())
+		{
+			fwrite(request.getBody().c_str(), 1, request.getBody().size(), stdin);
+			fflush(stdin);
+		}
 
 		vector<string> envStrings;
 		for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
@@ -233,7 +237,12 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 		}
 		envp[envStrings.size()] = NULL;
 
-		execve("/usr/bin/php-cgi", argv, envp);
+		char *argv[] = {
+			strdup(cgi_path.c_str()),
+			(char *)cgi.c_str(),
+			NULL};
+
+		execve(cgi_path.c_str(), argv, envp);
 		perror("execve failed");
 		for (size_t i = 0; envp[i] != NULL; i++)
 		{
@@ -245,24 +254,6 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 	}
 	else
 	{
-		close(inputPipe[0]);
-		close(outputPipe[1]);
-		if (!request.getBody().empty())
-		{
-			ssize_t written = write(inputPipe[1], request.getBody().c_str(), request.getBody().size());
-			if (written == -1)
-			{
-				cerr << "Failed to write POST data to CGI script" << endl;
-			}
-			else
-			{
-				cout << "Wrote " << written << " bytes of POST data to CGI script" << endl;
-			}
-		}
-
-		close(inputPipe[1]);
-		close(stderrPipe[1]);
-		cout << "Waiting for child process to finish" << endl;
 		int status;
 		waitpid(childPid, &status, 0);
 
@@ -287,14 +278,6 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 	{
 		string output = getResponse();
 		cout << "Output: " << output << endl;
-		if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
-		{
-			response.setStatus(FORBIDEN);
-			response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
-			response.setBody(normalOutput);
-			cout << "PHP Warning or Error found" << endl;
-			return response;
-		}
 		response = parseOutput(output);
 	}
 	catch (const exception &e)
@@ -305,214 +288,129 @@ ResponseInfos CGI::execute(const Request request, const string &cgi)
 	return response;
 }
 
-string CGI::getResponse() 
+string CGI::getResponse()
 {
-    string response;
-    char buffer[4096];
-    ssize_t bytesRead;
-    
-    while ((bytesRead = read(stderrPipe[0], buffer, sizeof(buffer))) > 0) {
-        response.append(buffer, bytesRead);
-    }
-    response.append("\n");
-    
-    while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0) {
-        response.append(buffer, bytesRead);
-        normalOutput.append(buffer, bytesRead);
-    }
+	string response;
+	char buffer[4096];
+	ssize_t bytesRead;
 
-    ofstream outFile("cgi_output.txt");
-    if (outFile.is_open()) {
-        outFile << response;
-        outFile.close();
-    } else {
-        cerr << "Error: Unable to open file for writing CGI response" << endl;
-    }
-    
-    return response;
+	FILE *errorFile = fopen(errorFileName.c_str(), "rb");
+	if (errorFile)
+	{
+		while ((bytesRead = fread(buffer, 1, sizeof(buffer), errorFile)) > 0)
+		{
+			response.append(buffer, bytesRead);
+		}
+		fclose(errorFile);
+	}
+	else
+	{
+		cerr << "Error: Unable to open error file: " << errorFileName << endl;
+	}
+
+	response.append("\n");
+
+	FILE *outputFile = fopen(outputFileName.c_str(), "rb");
+	if (outputFile)
+	{
+		while ((bytesRead = fread(buffer, 1, sizeof(buffer), outputFile)) > 0)
+		{
+			response.append(buffer, bytesRead);
+			normalOutput.append(buffer, bytesRead);
+		}
+		fclose(outputFile);
+	}
+	else
+	{
+		cerr << "Error: Unable to open output file: " << outputFileName << endl;
+	}
+
+	ofstream outFile(outputFileName.c_str());
+	if (outFile.is_open())
+	{
+		outFile << response;
+		outFile.close();
+	}
+	else
+	{
+		cerr << "Error: Unable to open file for writing CGI response" << endl;
+	}
+
+	remove(inputFileName.c_str());
+	remove(errorFileName.c_str());
+	remove(outputFileName.c_str());
+
+	return response;
 }
-
-
-// string CGI::getResponse()
-// {
-// 	string response;
-// 	char buffer[4096];
-// 	ssize_t bytesRead;
-
-// 	fcntl(outputPipe[0], O_NONBLOCK);
-// 	fcntl(stderrPipe[0], O_NONBLOCK);
-// 	struct timeval tv;
-// 	tv.tv_sec = 30;
-// 	tv.tv_usec = 0;
-
-// 	fd_set readfds;
-// 	FD_ZERO(&readfds);
-// 	FD_SET(outputPipe[0], &readfds);
-
-// 	fd_set errfds;
-// 	FD_ZERO(&errfds);
-// 	FD_SET(stderrPipe[0], &errfds);
-
-// 	while (select(stderrPipe[0] + 1, &errfds, NULL, NULL, &tv) > 0)
-// 	{
-// 		bytesRead = read(stderrPipe[0], buffer, sizeof(buffer));
-// 		if (bytesRead > 0)
-// 			response.append(buffer, bytesRead);
-// 		else if (bytesRead == 0)
-// 			break;
-// 	}
-// 	response.append("\n");
-// 	while (select(outputPipe[0] + 1, &readfds, NULL, NULL, &tv) > 0)
-// 	{
-// 		bytesRead = read(outputPipe[0], buffer, sizeof(buffer));
-// 		if (bytesRead > 0)
-// 		{
-// 			response.append(buffer, bytesRead);
-// 			normalOutput.append(buffer, bytesRead);
-// 		}
-// 		else if (bytesRead == 0)
-// 			break;
-// 	}
-// 	ofstream outFile("cgi_output.txt");
-// 	if (outFile.is_open())
-// 	{
-// 		outFile << response;
-// 		outFile.close();
-// 	}
-// 	else
-// 	{
-// 		cerr << "Error: Unable to open file for writing CGI response" << endl;
-// 	}
-// 	return response;
-// }
 
 ResponseInfos CGI::parseOutput(string output)
 {
 	ResponseInfos response;
-
-	// Find the separator between headers and body (double newline)
+	cout << "response string : " << output << endl;
 	size_t headerEnd = output.find("\r\n\r\n");
+
+	if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
+	{
+		response.setStatus(FORBIDEN);
+		response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
+	}
 	if (headerEnd == string::npos)
 		headerEnd = output.find("\n\n");
-
 	if (headerEnd != string::npos)
 	{
-		// Extract headers
 		string headers = output.substr(0, headerEnd);
 		string body = output.substr(headerEnd + (output[headerEnd] == '\r' ? 4 : 2));
+		istringstream headerStream(headers);
+		string line;
 
-		// Parse headers
-		size_t pos = 0;
-		size_t nextPos;
-		while ((nextPos = headers.find('\n', pos)) != string::npos)
-		{
-			string line = headers.substr(pos, nextPos - pos);
-			if (!line.empty() && line[line.length() - 1] == '\r')
-				line = line.substr(0, line.length() - 1);
-
-			// Find the colon in the header
+		while (getline(headerStream, line)) {
+			if (!line.empty() && line[line.size() - 1] == '\r')
+				line.erase(line.size() - 1);
 			size_t colon = line.find(':');
 			if (colon != string::npos)
 			{
 				string key = line.substr(0, colon);
 				string value = line.substr(colon + 1);
-
-				// Trim whitespace
-				while (!value.empty() && isspace(value[0]))
-					value = value.substr(1);
-
+				value.erase(0, value.find_first_not_of(" \t"));
 				if (key == "Set-Cookie")
-				{
-                    response.addHeader("Set-Cookie", value);
-                } 
-				else 
-				{
-                    response.addHeader(key, value);
-                }
+					response.addHeader("Set-Cookie", value);
+				else
+					response.addHeader(key, value);
 			}
-			pos = nextPos + 1;
 		}
-
-		// Set the body
 		response.setBody(body);
 	}
 	else
-	{
-		// No headers found, treat everything as body
 		response.setBody(output);
+	ofstream logFile("cgi.log", ios::app);
+	logFile << "CGI Response Status: " << response.getStatus() << endl;
+	logFile << "CGI Response Headers: " << endl;
+	for (map<string, string>::const_iterator it = response.getHeaders().begin(); it != response.getHeaders().end(); ++it)
+	{
+		logFile << it->first << ": " << it->second << endl;
 	}
-
+	logFile << "CGI Response Body Length: " << response.getBody().length() << endl;
+	logFile.close();
 	return response;
 }
 
-map<string, string> CGI::parseCookies(const string& cookieHeader) {
-    map<string, string> cookies;
-    size_t start = 0;
-    size_t end;
-    
-    while ((end = cookieHeader.find(';', start)) != string::npos) {
-        string cookie = cookieHeader.substr(start, end - start);
-        size_t equal = cookie.find('=');
-        if (equal != string::npos) {
-            string key = cookie.substr(0, equal);
-            string value = cookie.substr(equal + 1);
-            cookies[key] = value;
-        }
-        start = end + 1;
-    }
-    return cookies;
+map<string, string> CGI::parseCookies(const string &cookieHeader)
+{
+	map<string, string> cookies;
+	size_t start = 0;
+	size_t end;
+
+	while ((end = cookieHeader.find(';', start)) != string::npos)
+	{
+		string cookie = cookieHeader.substr(start, end - start);
+		size_t equal = cookie.find('=');
+		if (equal != string::npos)
+		{
+			string key = cookie.substr(0, equal);
+			string value = cookie.substr(equal + 1);
+			cookies[key] = value;
+		}
+		start = end + 1;
+	}
+	return cookies;
 }
-
-
-
-// ResponseInfos CGI::parseOutput(string output) {
-//     ResponseInfos response;
-//     istringstream stream(output);
-//     string line;
-//     bool inHeaders = true;
-//     stringstream bodyStream;
-
-//     // Default response
-//     response.setStatus(OK);
-//     response.setStatusMessage("OK");
-
-//     // Parse line by line
-//     while (getline(stream, line)) {
-//         // Remove carriage return if present
-//         if (!line.empty() && line[line.length() - 1] == '\r')
-//             line.erase(line.length() - 1);
-
-//         if (line.empty() && inHeaders) {
-//             inHeaders = false;
-//             continue;
-//         }
-
-//         if (inHeaders) {
-//             size_t colonPos = line.find(':');
-//             if (colonPos != string::npos) {
-//                 string key = line.substr(0, colonPos);
-//                 string value = line.substr(colonPos + 1);
-
-//                 // Trim whitespace
-//                 value.erase(0, value.find_first_not_of(" \t"));
-//                 value.erase(value.find_last_not_of(" \t") + 1);
-
-//                 // Handle special headers
-//                 if (key == "Status") {
-//                     size_t spacePos = value.find(' ');
-//                     if (spacePos != string::npos) {
-// 						response.setStatus(std::atoi(value.substr(0, spacePos).c_str()));
-//                         response.setStatusMessage(value.substr(spacePos + 1));
-//                     }
-//                 } else {
-//                     response.addHeader(key, value);
-//                 }
-//             }
-//         } else {
-//             bodyStream << line << "\n";
-//         }
-//     }
-
-//     response.setBody(bodyStream.str());
-//     return response;
-// }
