@@ -163,24 +163,40 @@ CGI Response Body Length: 83977
 CGI Response Status: 200
 CGI Response Headers: 
 Content-type: text/html; charset=UTF-8
-CGI Response Body Length: 84382
+CGI Response Body Length: 244
 CGI Response Status: 200
 CGI Response Headers: 
 Content-type: text/html; charset=UTF-8
-Set-Cookie: user=returnVisitor; expires=Sun, 16-Feb-2025 16:28:47 GMT; Max-Age=3600
-CGI Response Body Length: 122
+CGI Response Body Length: 1159
 CGI Response Status: 200
 CGI Response Headers: 
 Content-type: text/html; charset=UTF-8
-Set-Cookie: user=returnVisitor; expires=Sun, 16-Feb-2025 16:28:52 GMT; Max-Age=3600
-CGI Response Body Length: 122
+CGI Response Body Length: 1390
 CGI Response Status: 200
 CGI Response Headers: 
 Content-type: text/html; charset=UTF-8
-Set-Cookie: user=returnVisitor; expires=Sun, 16-Feb-2025 16:28:53 GMT; Max-Age=3600
-CGI Response Body Length: 122
+CGI Response Body Length: 1197
 CGI Response Status: 200
 CGI Response Headers: 
 Content-type: text/html; charset=UTF-8
-Set-Cookie: user=returnVisitor; expires=Sun, 16-Feb-2025 16:28:53 GMT; Max-Age=3600
-CGI Response Body Length: 122
+CGI Response Body Length: 1369
+CGI Response Status: 200
+CGI Response Headers: 
+Content-Type: application/json
+CGI Response Body Length: 174
+CGI Response Status: 200
+CGI Response Headers: 
+Content-type: text/html; charset=UTF-8
+CGI Response Body Length: 244
+CGI Response Status: 200
+CGI Response Headers: 
+Content-type: text/html; charset=UTF-8
+CGI Response Body Length: 1159
+CGI Response Status: 200
+CGI Response Headers: 
+Content-type: text/html; charset=UTF-8
+CGI Response Body Length: 1390
+CGI Response Status: 200
+CGI Response Headers: 
+Content-type: text/html; charset=UTF-8
+CGI Response Body Length: 1369
