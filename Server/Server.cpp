@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/01 13:17:33 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/16 15:36:11 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,8 +92,8 @@ void Server::listenForConnection()
 
 void Server::init_epoll()
 {
-      signal(SIGPIPE, SIG_IGN);
-  signal(SIGTSTP, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
     this->epollFD = epoll_create(1024);
     if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
     this->registerAllSockets();
@@ -108,7 +108,8 @@ void Server::registerAllSockets()
     {
         this->event.events = EPOLLIN;
         this->event.data.fd = this->socketContainer[index];
-        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) Error(2, "Error Server:: ", "epoll_ctl (add socket)");
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) 
+            (ServerLogger("Cannot Add Register Client", Logger::ERROR, false));
     }
 }
 
@@ -119,10 +120,7 @@ void Server::addClientToEpoll(int clientFD)
     event.data.fd = clientFD;
     event.events = EPOLLIN | EPOLLET;
     if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1)
-    {
-        close(clientFD);
-        Error(2, "Error Server:: ", "epoll_ctl (add clientFD)");
-    }    
+        (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
 }
 
 void Server::acceptConnection(int index)
@@ -135,7 +133,7 @@ void Server::acceptConnection(int index)
     acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
     if (acceptFD == -1)
     {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) Error(2, "Error Server:: ", "accept");
+        if (errno != EAGAIN && errno != EWOULDBLOCK)  (ServerLogger("Cannot Accept Connection", Logger::ERROR, false));
         return;
     }
     this->addClientToEpoll(acceptFD);
@@ -153,8 +151,7 @@ void Server::processData(int index)
     if (bytesReceived <= 0)
     {
         epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
-        close(events[index].data.fd);
-        std::cout << "Client disconnected, fd: " << events[index].data.fd << std::endl;
+        (close(events[index].data.fd), ServerLogger("Client disconnected", Logger::INFO, false));
         return;
     }
     requestData.append(buffer, bytesReceived);
@@ -179,7 +176,7 @@ void Server::findServer()
     {
         fdStr = itoa(this->events[index].data.fd);
         if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
-        if (this->events[index].events & EPOLLOUT) this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd);
+        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd));
     }
 }
 
