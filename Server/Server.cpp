@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 16:26:53 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/16 18:24:58 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,6 +136,8 @@ void Server::acceptConnection(int index)
         if (errno != EAGAIN && errno != EWOULDBLOCK)  (ServerLogger("Cannot Accept Connection", Logger::ERROR, false));
         return;
     }
+    // std::cout << "Accept: " << acceptFD << std::endl;
+    ClientStatus.push_back(make_pair(acceptFD, ConnectionStatus()));
     this->addClientToEpoll(acceptFD);
 }
 
@@ -154,8 +156,7 @@ void Server::processData(int index)
         (close(events[index].data.fd), ServerLogger("Client disconnected", Logger::INFO, false));
         return;
     }
-    ClientStatus.push_back(make_pair(events[index].data.fd, ConnectionStatus()));
-    // std::cout << index<< "\t" << ClientStatus[0].first << "\t" <<ClientStatus[0].second.acceptTime << std::endl;
+    this->updateTime(index);
     requestData.append(buffer, bytesReceived);
     if (!requestData.empty())
         this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
@@ -172,13 +173,12 @@ void Server::acceptAndAnswer(int index)
 void Server::findServer()
 {
     int index           = INDEX;
-    std::string         fdStr, eventFlags;
     
     while (++index < this->nfds)
     {
-        fdStr = itoa(this->events[index].data.fd);
         if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
-        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->CheckForTimeOut(events[index].data.fd));
+        if (this->events[index].events & EPOLLOUT) 
+            (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->CheckForTimeOut(events[index].data.fd));
     }
 }
 
@@ -238,10 +238,30 @@ void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_
 void    Server::CheckForTimeOut(int fd)
 {
     int i = -1;
-
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
+    // std::cout << this->ClientStatus[i].first <<"\t" << ClientStatus[i].second.acceptTime << "\t" << ClientStatus[i].second.lastActivityTime << std::endl; 
+
+    std::string body = "Request Timeout"; 
+    std::ostringstream response;
+    response << "HTTP/1.1 408 Request Timeout\r\n";
+    response << "Content-Type: text/plain\r\n";
+    response << "Content-Length: " << body.size() << "\r\n";
+    response << "\r\n";
+    response << body;
+    std::string res = response.str();
+
     if (ClientStatus[i].second.isTimedOut())
-        (close(fd), ClientStatus.erase(ClientStatus.begin() + i));
+        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, res.c_str(),res.size(),0),close(fd));
+}
+
+void    Server::updateTime(int fd)
+{
+    int i = -1;
+    while (++i < this->ClientStatus.size())
+        if (ClientStatus[i].first == fd) break;
+    if (i == this->ClientStatus.size()) return;
+    std::cout << "Hi " <<std::endl;
+    ClientStatus[i].second.lastActivityTime = time(NULL);
 }
