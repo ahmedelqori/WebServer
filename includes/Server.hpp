@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 16:22:44 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/16 18:22:13 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ class ConnectionStatus
 
         bool isTimedOut() const
         {
-            return difftime(lastActivityTime, acceptTime) >= 4;
+            return difftime(lastActivityTime, acceptTime) >= 0;
         }
 
         time_t acceptTime;
@@ -100,5 +100,6 @@ class  Server
         void    acceptConnection(int index);  
         void    addClientToEpoll(int clientFD);
         void    CheckForTimeOut(int);
+        void    updateTime(int);
 };
 #endif
