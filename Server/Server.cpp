@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 15:36:11 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/16 16:26:53 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,6 +154,8 @@ void Server::processData(int index)
         (close(events[index].data.fd), ServerLogger("Client disconnected", Logger::INFO, false));
         return;
     }
+    ClientStatus.push_back(make_pair(events[index].data.fd, ConnectionStatus()));
+    // std::cout << index<< "\t" << ClientStatus[0].first << "\t" <<ClientStatus[0].second.acceptTime << std::endl;
     requestData.append(buffer, bytesReceived);
     if (!requestData.empty())
         this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
@@ -176,7 +178,7 @@ void Server::findServer()
     {
         fdStr = itoa(this->events[index].data.fd);
         if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
-        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd));
+        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->CheckForTimeOut(events[index].data.fd));
     }
 }
 
@@ -233,3 +235,13 @@ void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_
    else this->logger.log(level, message);
 }
 
+void    Server::CheckForTimeOut(int fd)
+{
+    int i = -1;
+
+    while (++i < this->ClientStatus.size())
+        if (ClientStatus[i].first == fd) break;
+    if (i == this->ClientStatus.size()) return;
+    if (ClientStatus[i].second.isTimedOut())
+        (close(fd), ClientStatus.erase(ClientStatus.begin() + i));
+}
