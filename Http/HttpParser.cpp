@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/31 19:22:06 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 14:31:06 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,9 +54,6 @@ Request HttpParser::parse(const string &data)
         processLine(line);
 
     validateHeaders();
-
-    // if (state == BODY)
-    //     parseBody(body);
 
     Request request;
     request.setMethod(method);
