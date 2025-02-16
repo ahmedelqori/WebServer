@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/16 15:38:23 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 18:13:36 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -179,17 +179,18 @@ void CGI::setupEnvironment(const Request &req)
 	cout << "End of CGI Environment Variables" << endl;
 }
 
+string extentionExtractor(string path)
+{
+	size_t pos = path.find_last_of(".");
+	if (pos == string::npos)
+		return "";
+	return path.substr(pos);
+}
+
 ResponseInfos CGI::execute(const Request request, const string &cgi, map<string, string> cgi_info, string root)
 {
-	string cgi_path = "/usr/bin/php-cgi";
-	if (cgi.find(".php") != string::npos)
-	{
-		cgi_path = "/usr/bin/php-cgi";
-	}
-	else if (cgi.find(".py") != string::npos)
-	{
-		cgi_path = "/usr/bin/python3";
-	}
+	string extention = extentionExtractor(cgi);
+	string cgi_path = cgi_info[extention];
 
 	setupEnvironment(request);
 

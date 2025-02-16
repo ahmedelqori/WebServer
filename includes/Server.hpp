@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/25 13:53:41 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/16 16:22:44 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,12 @@ class ConnectionStatus
             this->acceptTime = now;
             this->lastActivityTime = now;
         }
+
+        bool isTimedOut() const
+        {
+            return difftime(lastActivityTime, acceptTime) >= 4;
+        }
+
         time_t acceptTime;
         time_t lastActivityTime;
 };
@@ -67,7 +73,7 @@ class  Server
         RequestHandler requestHandler;
         std::vector<addrinfo *> res;
         std::vector<int> socketContainer;
-        std::map<int, ConnectionStatus*> ClientStatus;
+        std::vector<std::pair<int, ConnectionStatus> > ClientStatus;
         addrinfo hints;
         Logger logger;
         int serverIndex;
@@ -92,7 +98,7 @@ class  Server
         void    findServer();
         void    processData(int index);
         void    acceptConnection(int index);  
-        void    NonBLockingCLient(int clientFD); 
         void    addClientToEpoll(int clientFD);
+        void    CheckForTimeOut(int);
 };
 #endif
