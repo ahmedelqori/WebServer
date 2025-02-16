@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 18:59:57 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 19:09:49 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -261,9 +261,11 @@ void    Server::CheckForTimeOut(int fd)
     response << "\r\n";
     response << body;
     std::string res = response.str();
-
+    
     if (ClientStatus[i].second.isTimedOut())
-        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, res.c_str(),res.size(),0),close(fd));
+    {
+        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, res.c_str(),res.size(),0),requestHandler.cleanupConnection(epollFD,fd));
+    }
 }
 
 void    Server::updateTime(int fd)
