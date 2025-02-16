@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/16 18:09:44 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 18:37:29 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -219,7 +219,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         }
         else
         {
-
+            
             if (isChunkedRequest(request))
             {
                 if (request.hasHeader(CONTENT_LENGTH))
@@ -619,7 +619,7 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 
 void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
 {
-
+    
     checkMaxBodySize();
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
@@ -647,8 +647,8 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     {
         const char *post_data = state.partial_request.data();
         state.output_file.write(post_data, state.partial_request.length());
-
         state.total_size += state.partial_request.length();
+        cout << "total size " << state.total_size << endl;
 
         if (state.total_size >= contentLenght)
         {
