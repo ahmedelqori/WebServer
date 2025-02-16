@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/16 16:01:23 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 18:09:44 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,7 +184,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
-                    if (url.find_last_of("."))
+                    if (is_CgiRequest(url, location.getCgiExtension()))
                     {
                         CGI cgi;
 
@@ -269,7 +269,21 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
         return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_EXIST), NOT_EXIST);
 }
 
+bool RequestHandler::is_CgiRequest(string url, map<string, string> cgiInfos)
+{
 
+    map<string, string>::const_iterator it = cgiInfos.begin();
+    if (it == cgiInfos.end())
+        return false;
+    size_t pos = url.find_last_of(".");
+    if (pos == string::npos)
+        return false;
+    string extention = url.substr(pos, url.length());
+    map<string, string>::const_iterator pos2 = cgiInfos.find(extention);
+    if (pos2 == cgiInfos.end())
+        return false;
+    return true;
+}
 
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
@@ -280,10 +294,9 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (!matchLocation(bestMatch, url, request))
     {
-        
-        if (url.find_last_of(".") != string::npos)
+
+        if (is_CgiRequest(url, bestMatch.getCgiExtension()))
         {
-               cout << "handling cgi request" << endl;
             try
             {
                 map<string, string> cgi_info = bestMatch.getCgiExtension();
@@ -317,9 +330,8 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         return serveRessourceOrFail(ressource);
     }
 
-    if (url.find_last_of(".") != string::npos)
+    if (is_CgiRequest(url, bestMatch.getCgiExtension()))
     {
-        cout << "handling cgi request" << endl;
         try
         {
             map<string, string> cgi_info = bestMatch.getCgiExtension();
@@ -555,14 +567,13 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 
     while (true)
     {
-       
+
         size_t pos = state.partial_request.find("\r\n");
         if (pos == string::npos)
         {
             return;
         }
 
-      
         string chunk_size_str = state.partial_request.substr(0, pos);
         size_t chunk_size = 0;
         try
@@ -578,16 +589,15 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
             throw BAD_REQUEST;
         }
 
-        size_t chunk_header_size = pos + 2;                          
+        size_t chunk_header_size = pos + 2;
         size_t chunk_total_size = chunk_header_size + chunk_size + 2;
 
         if (state.partial_request.length() < chunk_total_size)
-            return; 
+            return;
 
-   
         if (chunk_size == 0)
         {
-    
+
             if (state.partial_request.substr(chunk_header_size).compare(0, 2, "\r\n") == 0)
             {
                 state.output_file.close();

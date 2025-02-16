@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.hpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/20 23:24:46 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 17:48:29 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,6 +106,7 @@ public:
     void handleRequest(int client_sockfd, string req, int epoll_fd);
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
+    bool is_CgiRequest(string url, map<string, string> cgiInfos);
     ResponseInfos handleGet(const Request &request);
     void checkMaxBodySize();
     ResponseInfos handlePost(const Request &request);
