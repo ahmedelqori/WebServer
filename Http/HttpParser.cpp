@@ -6,12 +6,11 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/16 14:31:06 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/16 15:23:29 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/HttpParser.hpp"
-
 
 HttpParser::HttpParser() : state(REQUEST_LINE) {}
 
@@ -140,7 +139,7 @@ void HttpParser::parseHeader(const string &line)
     string name = line.substr(0, separator);
     string value = line.substr(separator + 1);
 
-    if ((!value.empty() && value[0] != ' ') ||  value[1] == ' ')
+    if ((!value.empty() && value[0] != ' ') || value[1] == ' ')
         throw BAD_REQUEST;
 
     trim(name);
@@ -262,7 +261,7 @@ std::string HttpParser::validatePath(const std::string &path)
         throw BAD_REQUEST;
     }
 
-    if (path.length() > 84)
+    if (path.length() > 2048)
     {
         throw URI_TOO_LONG;
     }
@@ -276,11 +275,7 @@ std::string HttpParser::validatePath(const std::string &path)
 
     // Check for path traversal
     if (isBadUriTraversal(path))
-    {
-        std::cout << "Is Traversal uri " << std::endl;
-
         throw BAD_REQUEST;
-    }
 
     // Decode percent-encoded characters
     std::string decoded;
