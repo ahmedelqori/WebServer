@@ -6,13 +6,20 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/17 11:01:22 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/17 16:56:11 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
 Server::Server() : currentStateServer(INIT), serverIndex(INDEX){}
+
+ConnectionStatus::ConnectionStatus(){
+    time_t now = time(NULL);
+    this->acceptTime = now;
+    this->lastActivityTime = now;
+}
+
 Server::~Server()
 {
     int index = INDEX;
@@ -94,7 +101,7 @@ void Server::init_epoll()
 {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
-    this->epollFD = epoll_create(1024);
+    this->epollFD = epoll_create(1);
     if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
     this->registerAllSockets();
     currentStateServer = EPOLL;
@@ -108,8 +115,7 @@ void Server::registerAllSockets()
     {
         this->event.events = EPOLLIN;
         this->event.data.fd = this->socketContainer[index];
-        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) 
-            (ServerLogger("Cannot Add Register Client", Logger::ERROR, false));
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) (ServerLogger("Cannot Add Register Client", Logger::ERROR, false));
     }
 }
 
@@ -119,8 +125,7 @@ void Server::addClientToEpoll(int clientFD)
     
     event.data.fd = clientFD;
     event.events = EPOLLIN | EPOLLET;
-    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1)
-        (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
+    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1) (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
 }
 
 void Server::acceptConnection(int index)
@@ -156,17 +161,13 @@ void Server::processData(int index)
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    std::cout << "buffer: " << requestData  << std::endl;
-    if (!requestData.empty())
-        this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
 }
 
 void Server::acceptAndAnswer(int index)
 {
-    if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[index].data.fd) != this->socketContainer.end())
-        acceptConnection(index);
-    else
-        processData(index);
+    if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[index].data.fd) != this->socketContainer.end()) acceptConnection(index);
+    else processData(index);
 }
 
 void Server::findServer()
@@ -175,16 +176,8 @@ void Server::findServer()
     
     while (++index < this->nfds)
     {
-        if (this->events[index].events & EPOLLIN)
-        {   
-            std::cout << "is read: => ============================================= \n";
-            this->acceptAndAnswer(index);
-        }
-        if (this->events[index].events & EPOLLOUT)
-        {
-            // std::cout << "is answer:=> \n";
-            (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->resetTime(events[index].data.fd));
-        }
+        if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
+        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->resetTime(events[index].data.fd));
     }
 }
 
@@ -193,7 +186,7 @@ void Server::loopAndWait()
     ServerLogger("Server Started", Logger::INFO, false);
     while (true)
     {
-        this->nfds = epoll_wait(epollFD, events, 1024, 5000);
+        this->nfds = epoll_wait(epollFD, events, MAX_EVENTS, 5000);
         if (this->nfds == -1) {
             if (errno == EINTR) {
                 ServerLogger("epoll_wait interrupted by signal. Retrying...", Logger::WARNING, false);
@@ -203,14 +196,7 @@ void Server::loopAndWait()
                 Error(2, "Critical Error in Server:: ", "epoll_wait");
             }
         }
-        if (this->nfds == 0)
-        {
-            std::cout << "From Epoll Wait" << std::endl;
-            int i = -1;
-            while (++i < this->ClientStatus.size())
-                (updateTime(this->ClientStatus[i].first),CheckForTimeOut(this->ClientStatus[i].first));
-            
-        }
+        if (this->nfds == 0) this->timeoutChecker();
         if (this->nfds > 0) this->findServer();
     }
     close(epollFD);
@@ -255,21 +241,16 @@ void    Server::CheckForTimeOut(int fd)
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
-    // std::cout << this->ClientStatus[i].first <<"\t" << ClientStatus[i].second.acceptTime << "\t" << ClientStatus[i].second.lastActivityTime << std::endl; 
-    std::string body = "Request Timeout"; 
-    std::ostringstream response;
-    response << "HTTP/1.1 408 Request Timeout\r\n";
-    response << "Content-Type: text/plain\r\n";
-    response << "Content-Length: " << body.size() << "\r\n";
-    response << "\r\n";
-    response << body;
-    std::string res = response.str();
-    
+
     if (ClientStatus[i].second.isTimedOut())
-    {
-        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, res.c_str(),res.size(),0),requestHandler.cleanupConnection(epollFD,fd));
-        std::cout << "Is Timeout: " << ClientStatus[i].first << std::endl;
-    }
+        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, TIMEOUT_MESSAGE, strlen(TIMEOUT_MESSAGE),0),requestHandler.cleanupConnection(epollFD,fd));
+}
+
+void    Server::timeoutChecker()
+{
+    int i = -1;
+    while (++i < this->ClientStatus.size())
+        (updateTime(this->ClientStatus[i].first),CheckForTimeOut(this->ClientStatus[i].first));
 }
 
 void    Server::updateTime(int fd)
@@ -278,7 +259,6 @@ void    Server::updateTime(int fd)
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
-    // std::cout << "Update Time: "<< this->ClientStatus[i].first <<"\t" << ClientStatus[i].second.acceptTime << "\t" << ClientStatus[i].second.lastActivityTime << std::endl; 
     ClientStatus[i].second.lastActivityTime = time(NULL);
 }
 
@@ -288,7 +268,6 @@ void    Server::resetTime(int fd)
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
-    // std::cout << "resetTime: "<< this->ClientStatus[i].first <<"\t" << ClientStatus[i].second.acceptTime << "\t" << ClientStatus[i].second.lastActivityTime << std::endl; 
     ClientStatus[i].second.acceptTime = time(NULL);
     ClientStatus[i].second.lastActivityTime = time(NULL);
 }
@@ -301,4 +280,10 @@ void    Server::deleteFromTimeContainer(int fd)
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
     ClientStatus.erase(ClientStatus.begin() + i);
+}
+
+
+bool   ConnectionStatus::isTimedOut() const
+{
+    return difftime(lastActivityTime, acceptTime) >= TIMEOUT;
 }
