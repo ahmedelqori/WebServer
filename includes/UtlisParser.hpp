@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:56 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/17 16:56:06 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,5 +103,7 @@ void                            Error(int count, ...);
 #define KILO                        "K"
 #define MEGA                        "M"
 #define GIGA                        "G"
+
+#define MAX_EVENTS                  1024
 
 #endif
