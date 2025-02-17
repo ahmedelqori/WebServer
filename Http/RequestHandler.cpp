@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/10 19:07:38 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/16 18:37:29 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,6 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (!response_info.body.empty())
     {
-        cout << "hello from handling body" << endl;
         ssize_t bytes_sent = send(current_fd, response_info.body.c_str(), response_info.body.length(), 0);
         if (bytes_sent <= 0)
         {
@@ -185,7 +184,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
-                    if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
+                    if (is_CgiRequest(url, location.getCgiExtension()))
                     {
                         CGI cgi;
 
@@ -220,7 +219,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         }
         else
         {
-
+            
             if (isChunkedRequest(request))
             {
                 if (request.hasHeader(CONTENT_LENGTH))
@@ -270,6 +269,22 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
         return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_EXIST), NOT_EXIST);
 }
 
+bool RequestHandler::is_CgiRequest(string url, map<string, string> cgiInfos)
+{
+
+    map<string, string>::const_iterator it = cgiInfos.begin();
+    if (it == cgiInfos.end())
+        return false;
+    size_t pos = url.find_last_of(".");
+    if (pos == string::npos)
+        return false;
+    string extention = url.substr(pos, url.length());
+    map<string, string>::const_iterator pos2 = cgiInfos.find(extention);
+    if (pos2 == cgiInfos.end())
+        return false;
+    return true;
+}
+
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
 
@@ -279,7 +294,8 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (!matchLocation(bestMatch, url, request))
     {
-        if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
+
+        if (is_CgiRequest(url, bestMatch.getCgiExtension()))
         {
             try
             {
@@ -314,7 +330,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         return serveRessourceOrFail(ressource);
     }
 
-    if (url.length() >= 4 && url.substr(url.length() - 4) == ".php")
+    if (is_CgiRequest(url, bestMatch.getCgiExtension()))
     {
         try
         {
@@ -551,14 +567,13 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 
     while (true)
     {
-        // 1. Check for chunk size with proper hex validation
+
         size_t pos = state.partial_request.find("\r\n");
         if (pos == string::npos)
         {
-            return; // Need more data
+            return;
         }
 
-        // 2. Parse chunk size with strict hex validation
         string chunk_size_str = state.partial_request.substr(0, pos);
         size_t chunk_size = 0;
         try
@@ -574,17 +589,15 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
             throw BAD_REQUEST;
         }
 
-        // 3. Verify we have the complete chunk
-        size_t chunk_header_size = pos + 2;                           // includes \r\n
-        size_t chunk_total_size = chunk_header_size + chunk_size + 2; // +2 for trailing \r\n
+        size_t chunk_header_size = pos + 2;
+        size_t chunk_total_size = chunk_header_size + chunk_size + 2;
 
         if (state.partial_request.length() < chunk_total_size)
-            return; // Need more data
+            return;
 
-        // 4. Process chunk
         if (chunk_size == 0)
         {
-            // Last chunk
+
             if (state.partial_request.substr(chunk_header_size).compare(0, 2, "\r\n") == 0)
             {
                 state.output_file.close();
@@ -600,15 +613,13 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
         const char *chunk_data = state.partial_request.data() + chunk_header_size;
         state.output_file.write(chunk_data, chunk_size);
         state.total_size += chunk_size;
-
-        // 5.Remove processed chunk
         state.partial_request = state.partial_request.substr(chunk_total_size);
     }
 }
 
 void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
 {
-
+    
     checkMaxBodySize();
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
@@ -636,8 +647,8 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     {
         const char *post_data = state.partial_request.data();
         state.output_file.write(post_data, state.partial_request.length());
-
         state.total_size += state.partial_request.length();
+        cout << "total size " << state.total_size << endl;
 
         if (state.total_size >= contentLenght)
         {
