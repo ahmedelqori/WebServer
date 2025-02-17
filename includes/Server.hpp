@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 18:55:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/17 10:53:16 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ class ConnectionStatus
 
         bool isTimedOut() const
         {
-            return difftime(lastActivityTime, acceptTime) >= 5;
+            return difftime(lastActivityTime, acceptTime) >= 45;
         }
 
         time_t acceptTime;
@@ -101,5 +101,7 @@ class  Server
         void    addClientToEpoll(int clientFD);
         void    CheckForTimeOut(int);
         void    updateTime(int);
+        void    resetTime(int fd);
+        void    deleteFromTimeContainer(int);
 };
 #endif
