@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/16 17:02:02 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/16 19:07:14 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,7 +68,7 @@ map<string, string> CGI::createHeader(string output)
 	(void)output;
 	map<string, string> header;
 	string line;
-	ifstream file("cgi_output.txt");
+	ifstream file(outputFileName.c_str());
 	if (file.is_open())
 	{
 		while (getline(file, line))
@@ -256,8 +256,32 @@ ResponseInfos CGI::execute(const Request request, const string &cgi, map<string,
 	else
 	{
 		int status;
-		waitpid(childPid, &status, 0);
+        time_t startTime = time(NULL);
+        const int TIMEOUT = 3;
 
+        while (true) {
+            int result = waitpid(childPid, &status, WNOHANG);
+            if (result == -1) {
+                perror("waitpid failed");
+                break;
+            } else if (result == 0) {
+                if (time(NULL) - startTime >= TIMEOUT) {
+                    kill(childPid, SIGKILL);
+                    waitpid(childPid, &status, 0);
+                    ResponseInfos response;
+                    response.setStatus(504);
+                    response.setStatusMessage("504 Gateway Timeout");
+					map<string, string> headers;
+					headers["Content-Type"] = "text/html";
+					response.setHeaders(headers);
+					response.setBody("CGI Timeout");
+                    return response;
+                }
+                usleep(100000);
+            } else {
+                break;
+            }
+        }
 		if (WIFEXITED(status))
 		{
 			int exitStatus = WEXITSTATUS(status);
@@ -267,6 +291,10 @@ ResponseInfos CGI::execute(const Request request, const string &cgi, map<string,
 				ResponseInfos response;
 				response.setStatus(INTERNAL_SERVER_ERROR);
 				response.setStatusMessage(MSG_INTERNAL_SERVER_ERROR);
+				map<string, string> headers;
+				headers["Content-Type"] = "text/html";
+				response.setHeaders(headers);
+				response.setBody("CGI Processing Error");
 				return response;
 			}
 		}
@@ -337,9 +365,12 @@ string CGI::getResponse()
 		cerr << "Error: Unable to open file for writing CGI response" << endl;
 	}
 
-	remove(inputFileName.c_str());
-	remove(errorFileName.c_str());
-	remove(outputFileName.c_str());
+	if (remove(inputFileName.c_str()) != 0)
+		cerr << "Error removing input file: " << strerror(errno) << endl;
+	if (remove(errorFileName.c_str()) != 0)
+		cerr << "Error removing error file: " << strerror(errno) << endl;
+	if (remove(outputFileName.c_str()) != 0)
+		cerr << "Error removing output file: " << strerror(errno) << endl;
 
 	return response;
 }
