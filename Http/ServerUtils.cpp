@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerUtils.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:36 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/17 15:01:46 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,8 +55,10 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
     response.status = code;
     response.statusMessage = Request::generateStatusMsg(code);
     stringstream ss;
-    ss << filePath.length();
-    response.headers["Content-Length"] = getFileSize(filePath);
+    string s;
+    ss << getFileSize(filePath);
+    ss >> s;
+    response.headers["Content-Length"] = s;
     if (filePath.find_last_of('.') != string::npos)
     {
         string ext = filePath.substr(filePath.find_last_of('.'));
