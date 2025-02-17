@@ -1,0 +1,254 @@
+                                                                                                                                                      	[1m[35mServer is initializing.[0m                              	[1m[35mServer is setting up the address.[0m                              	[1m[35mServer is creating sockets.[0m                              	[1m[35mServer is binding sockets.[0m                              	[1m[35mServer is listening for connections.[0m                              	[1m[35mServer is initializing epoll.[0m                                                                                                                                  [1m[36m2025-02-17 14:38:55 [INFO] Server Started[0m
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: nc:8883
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: nc:8883
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: nc:8883
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: nc:8883
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: ael-qori.42.fr:8888
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: ael-qori.42.fr:8888
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: ael-qori.42.fr:8888
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: ael-qori.42.fr:8888
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: ael-qori.42.fr:8888
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: ael-qori.42.fr:8888
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: ael-qori.42.fr:8888
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: ael-qori.42.fr:8888
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: ael-qori.42.fr:8888
+User-Agent: curl/7.81.0
+Accept: */*
+Content-Length:545445
+
+
+From Epoll Wait
+is read: => ============================================= 
+is read: => ============================================= 
+buffer: GET / HTTP/1.1
+Host: ael-qori.42.fr:8888
+User-Agent: curl/7.81.0
+Accept: */*
+
+
+------------- Method: ---------
+ GET
+------------- URI: ----------
+/
+------------- Version: ---------
+ HTTP/1.1
+------------- Headers: ----------
+
+accept: */*
+host: ael-qori.42.fr:8888
+user-agent: curl/7.81.0
+---------------Body:----------------
+
+
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+Is Timeout: 6
+Is Timeout: 6
+Is Timeout: 6
+Is Timeout: 6
+From Epoll Wait
+Is Timeout: 6
+Is Timeout: 6
+From Epoll Wait
+Is Timeout: 6
+From Epoll Wait
+Is Timeout: 6
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait
+From Epoll Wait

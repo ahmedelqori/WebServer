@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/16 18:37:29 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/17 14:58:40 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         responseHeaders.setStatus(response_info.status, response_info.statusMessage);
         for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
         {
+            cout << it->first << " : " << it->second << endl;
             responseHeaders.addHeader(it->first, it->second);
         }
 
@@ -57,6 +58,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
     if (!response_info.body.empty())
     {
+    
         ssize_t bytes_sent = send(current_fd, response_info.body.c_str(), response_info.body.length(), 0);
         if (bytes_sent <= 0)
         {
