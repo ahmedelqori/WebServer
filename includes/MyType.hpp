@@ -78,6 +78,7 @@ struct RessourceInfo
     string path;
     string url;
     string root;
+    map<string,string>errors_pages;
     string indexFile;
     string redirect;
     bool autoindex;
@@ -86,7 +87,6 @@ struct RessourceInfo
 struct ResponseInfos
 {
     int status;
-    // ifstream fileStream;
     string statusMessage;
     map<string, string> headers;
     string location;

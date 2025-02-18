@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/18 18:32:06 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 00:02:49 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,6 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         responseHeaders.setStatus(response_info.status, response_info.statusMessage);
         for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
         {
-            // cout << it->first << " : " << it->second << endl;
             responseHeaders.addHeader(it->first, it->second);
         }
 
@@ -251,9 +250,14 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             chunked_uploads.erase(it);
         }
 
-        responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
-            Request::generateErrorPage(code),
-            code);
+        if (hasErrorPage(code))
+            responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code), code);
+        else
+        {
+            responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
+                Request::generateErrorPage(code),
+                code);
+        }
 
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
@@ -264,6 +268,19 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             INTERNAL_SERVER_ERROR);
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
+}
+string RequestHandler::getErrorPage(int code)
+{
+    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    return errors_pages[itoa(code)];
+}
+bool RequestHandler::hasErrorPage(int code)
+{
+    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    string errorPagePath = errors_pages.find(itoa(code)) != errors_pages.end() ? errors_pages[itoa(code)] : ServerUtils::generateErrorPage(code);
+    if (access(errorPagePath.c_str(), F_OK | R_OK) == 0)
+        return true;
+    return false;
 }
 
 ResponseInfos RequestHandler::processRequest(const Request &request)
@@ -287,7 +304,6 @@ bool RequestHandler::is_CgiRequest(string url, map<string, string> cgiInfos)
     if (pos == string::npos)
         return false;
     string extention = url.substr(pos, url.length());
-    cout << "extention " << extention << endl;
     map<string, string>::const_iterator pos2 = cgiInfos.find(extention);
     if (pos2 == cgiInfos.end())
         return false;
@@ -303,22 +319,23 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (!matchLocation(bestMatch, url, request))
     {
-        
         if (is_CgiRequest(url, bestMatch.getCgiExtension()))
+
         {
+            cout << "IS CGI REQUEST" << endl;
             try
             {
-                map<string, string> cgi_info = bestMatch.getCgiExtension();
-                map<string, string>::iterator it = cgi_info.begin();
-                cout << "CGI Extenstion INFO 1" << endl;
-                for (; it != cgi_info.end(); it++)
-                {
-                    cout << it->first << " : " << it->second << endl;
-                }
+                // map<string, string> cgi_info = bestMatch.getCgiExtension();
+                // map<string, string>::iterator it = cgi_info.begin();
+                // cout << "CGI Extenstion INFO 1" << endl;
+                // for (; it != cgi_info.end(); it++)
+                // {
+                //     cout << it->first << " : " << it->second << endl;
+                // }
                 CGI cgi;
                 ResponseInfos response;
                 response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
-                cout << response << endl;
+                // cout << response << endl;
                 return response;
             }
             catch (CGIException &e)
@@ -334,6 +351,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         ressource.autoindex = bestMatch.getDirectoryListing();
         ressource.redirect = "";
         ressource.path = f_path;
+        ressource.errors_pages = getServer(server_config, HOST).getErrorPages();
         ressource.root = bestMatch.getRoot();
         ressource.url = url;
         return serveRessourceOrFail(ressource);
@@ -341,19 +359,20 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (is_CgiRequest(url, bestMatch.getCgiExtension()))
     {
+         cout << "IS CGI REQUEST 2" << endl;
         try
         {
-            map<string, string> cgi_info = bestMatch.getCgiExtension();
-            map<string, string>::iterator it = cgi_info.begin();
+            // map<string, string> cgi_info = bestMatch.getCgiExtension();
+            // map<string, string>::iterator it = cgi_info.begin();
             cout << "CGI Extenstion INFO 2" << endl;
-            for (; it != cgi_info.end(); it++)
-            {
-                cout << it->first << " : " << it->second << endl;
-            }
+            // for (; it != cgi_info.end(); it++)
+            // {
+            //     cout << it->first << " : " << it->second << endl;
+            // }
             CGI cgi;
             ResponseInfos response;
             response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
-            cout << response << endl;
+            // cout << response << endl;
             return response;
         }
         catch (CGIException &e)
@@ -372,6 +391,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.indexFile = bestMatch.getIndexFile();
     ressource.redirect = bestMatch.getRedirectionPath();
     ressource.path = fullPath;
+    ressource.errors_pages = getServer(server_config, HOST).getErrorPages();
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
     if (!ServerUtils::isMethodAllowed(request.getMethod(), bestMatch.getMethods()))
@@ -482,7 +502,7 @@ ResponseInfos RequestHandler::handleDelete(const Request &request)
         FORBIDEN);
 }
 
-static ServerConfig getServer(ConfigParser configParser, std::string host)
+ServerConfig RequestHandler::getServer(ConfigParser configParser, std::string host)
 {
 
     std::vector<ServerConfig> currentServers = configParser.servers;
@@ -547,14 +567,25 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
     switch (ServerUtils::checkResource(ressource.path))
     {
     case DIRECTORY:
+    {
+        cout << " Redirect " << endl;
         return ServerUtils::serverRootOrRedirect(ressource);
+    }
         break;
     case REGULAR:
+    {
+        cout << " Regular " << endl;
         return ServerUtils::serveFile(ressource.path, OK);
+    }
         break;
+
     default:
-        return ServerUtils::serveFile(errorPagePath, NOT_FOUND);
+    {
+          cout << " Default " << endl;
+         return ServerUtils::serveFile(errorPagePath, 55);
+    }
         break;
+       
     }
 }
 

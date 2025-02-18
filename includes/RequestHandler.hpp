@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/18 18:24:34 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/18 23:24:27 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,7 +102,9 @@ public:
     string reqBuffer;
     bool validCRLF;
     ConfigParser server_config;
-
+    ServerConfig getServer(ConfigParser configParser, std::string host);
+    bool hasErrorPage(int code);
+    string getErrorPage(int code);
     void handleRequest(int client_sockfd, string req, int epoll_fd);
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
