@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/17 16:56:11 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/18 18:13:31 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,7 +147,7 @@ void Server::acceptConnection(int index)
 void Server::processData(int index)
 {
     int             bytesReceived;
-    char            buffer[1024];
+    char            buffer[BUFFER_SIZE_SERVER];
     std::string     requestData;
     
     memset(buffer, 0, sizeof(buffer));

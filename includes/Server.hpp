@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/17 16:56:19 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/18 18:13:27 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@
 
 # define TIMEOUT 45
 # define TIMEOUT_MESSAGE "HTTP/1.1 408 Request Timeout\r\n\r\n"
+# define BUFFER_SIZE_SERVER 8192
 
 class ConnectionStatus
 {
