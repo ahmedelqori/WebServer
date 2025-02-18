@@ -43,6 +43,8 @@ using namespace std;
 #define POST "POST"
 #define DELETE "DELETE"
 
+#define READ_BUFFER_SIZE 8192
+
 enum File_Type
 {
     DIRECTORY,
