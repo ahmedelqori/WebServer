@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Cgi.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/16 18:13:36 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/18 18:52:48 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,38 +68,38 @@ map<string, string> CGI::createHeader(string output)
 	(void)output;
 	map<string, string> header;
 	string line;
-	ifstream file("cgi_output.txt");
-	if (file.is_open())
-	{
-		while (getline(file, line))
-		{
-			if (line.empty())
-				break;
-			string::size_type pos = line.find(":");
-			if (pos != string::npos)
-			{
-				string key = line.substr(0, pos);
-				string value = line.substr(pos + 1);
-				header[key] = value;
-			}
-		}
-		file.close();
-	}
-	else
-	{
-		throw CGIException("Error: Unable to open file for reading CGI response");
-	}
+	// ifstream file(outputFileName.c_str());
+	// if (file.is_open())
+	// {
+	// 	while (getline(file, line))
+	// 	{
+	// 		if (line.empty())
+	// 			break;
+	// 		string::size_type pos = line.find(":");
+	// 		if (pos != string::npos)
+	// 		{
+	// 			string key = line.substr(0, pos);
+	// 			string value = line.substr(pos + 1);
+	// 			header[key] = value;
+	// 		}
+	// 	}
+	// 	file.close();
+	// }
+	// else
+	// {
+	// 	throw CGIException("Error: Unable to open file for reading CGI response");
+	// }
 	return header;
 }
 
-string to_string(int n)
+string to_string1(int n)
 {
 	stringstream ss;
 	ss << n;
 	return ss.str();
 }
 
-void CGI::setupEnvironment(const Request &req)
+void CGI::setupEnvironment(const Request &req,string root)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
 
@@ -110,7 +110,7 @@ void CGI::setupEnvironment(const Request &req)
 	env["SERVER_NAME"] = "localhost";
 	if (req.getMethod() == "POST")
 	{
-		env["CONTENT_LENGTH"] = to_string(req.getBody().size());
+		env["CONTENT_LENGTH"] = to_string1(req.getBody().size());
 		const map<string, string> &headers = req.getHeaders();
 		map<string, string>::const_iterator contentType = headers.find("Content-Type");
 		if (contentType != headers.end())
@@ -135,7 +135,7 @@ void CGI::setupEnvironment(const Request &req)
 	env["SCRIPT_NAME"] = req.getPath();
 
 	env["PATH_INFO"] = env["SCRIPT_NAME"];
-	string pathtranslated = "www" + req.getPath();
+	string pathtranslated = root + req.getPath();
 	env["PATH_TRANSLATED"] = pathtranslated;
 	env["SCRIPT_FILENAME"] = env["PATH_TRANSLATED"];
 
@@ -187,43 +187,47 @@ string extentionExtractor(string path)
 	return path.substr(pos);
 }
 
-ResponseInfos CGI::execute(const Request request, const string &cgi, map<string, string> cgi_info, string root)
+ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string> cgi_info, string root)
 {
+	ResponseInfos response;
+	
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
 
-	setupEnvironment(request);
+	cout << "CGI Path: " << cgi << endl;
+	cgi = string(root) + string(cgi); 
 
-	pid_t parentPid = getpid();
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	long long timestamp = tv.tv_sec * 1000000LL + tv.tv_usec;
-	string uniqueSuffix = to_string(parentPid) + "_" + to_string(timestamp);
-	inputFileName = "cgi_input_" + uniqueSuffix + ".txt";
-	outputFileName = "cgi_output_" + uniqueSuffix + ".txt";
-	errorFileName = "cgi_error_" + uniqueSuffix + ".txt";
+	setupEnvironment(request,root);
 
+	if (pipe(inputPipe) == -1 || pipe(outputPipe) == -1 || pipe(stderrPipe) == -1)
+	{
+		throw CGIException("Error: CGI: Pipe failed");
+	}
 	if ((childPid = fork()) == -1)
 	{
 		throw CGIException("Error: CGI: Fork failed");
 	}
 	if (!childPid)
 	{
-		FILE *inputFile = freopen(inputFileName.c_str(), "w+b", stdin);
-		FILE *outputFile = freopen(outputFileName.c_str(), "w+b", stdout);
-		FILE *errorFile = freopen(errorFileName.c_str(), "w+b", stderr);
+		if (dup2(inputPipe[0], STDIN_FILENO) == -1 || dup2(outputPipe[1], STDOUT_FILENO) == -1 || dup2(stderrPipe[1], STDERR_FILENO) == -1)
+			throw CGIException("Error: CGI: Dup2 failed");
+		
+		close(inputPipe[0]);
+		close(outputPipe[0]);
+		close(stderrPipe[0]);
+		
+		close(inputPipe[1]);
+		close(outputPipe[1]);
+		close(stderrPipe[1]);
 
-		if (!inputFile || !outputFile || !errorFile)
-		{
-			perror("freopen failed");
-			exit(1);
-		}
 
-		if (!request.getBody().empty())
-		{
-			fwrite(request.getBody().c_str(), 1, request.getBody().size(), stdin);
-			fflush(stdin);
-		}
+
+		
+		// if (!request.getBody().empty())
+		// {
+		// 	fwrite(request.getBody().c_str(), 1, request.getBody().size(), stdin);
+		// 	fflush(stdin);
+		// }
 
 		vector<string> envStrings;
 		for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
@@ -255,9 +259,37 @@ ResponseInfos CGI::execute(const Request request, const string &cgi, map<string,
 	}
 	else
 	{
+		close(inputPipe[0]);
+		close(inputPipe[1]);
+		close(outputPipe[1]);
+		close(stderrPipe[1]);
+		
 		int status;
-		waitpid(childPid, &status, 0);
 
+		cout << "Parsing CGI output" << endl;
+	
+		try
+		{
+			string output = getResponse();
+			cout << "Output: " << output << endl;
+			response = parseOutput(output);
+			if (response.getHeaders().empty())
+			{
+				response.setStatus(BAD_GATEWAY);
+				response.setStatusMessage("CGI Error: No headers in response");
+				map<string, string> headers;
+				headers["Content-Type"] = "text/html";
+				response.setHeaders(headers);
+				response.setBody("CGI Error: No headers in response");
+			}
+		}
+		catch (const exception &e)
+		{
+			response.setStatus(INTERNAL_SERVER_ERROR);
+			response.setBody("CGI Processing Error");
+		}
+  		waitpid(childPid, &status, WNOHANG);
+		cout << "test"<< endl;
 		if (WIFEXITED(status))
 		{
 			int exitStatus = WEXITSTATUS(status);
@@ -267,80 +299,44 @@ ResponseInfos CGI::execute(const Request request, const string &cgi, map<string,
 				ResponseInfos response;
 				response.setStatus(INTERNAL_SERVER_ERROR);
 				response.setStatusMessage(MSG_INTERNAL_SERVER_ERROR);
+				map<string, string> headers;
+				headers["Content-Type"] = "text/html";
+				response.setHeaders(headers);
+				response.setBody("CGI Processing Error");
 				return response;
 			}
 		}
 	}
 
-	cout << "Parsing CGI output" << endl;
-	ResponseInfos response;
-
-	try
-	{
-		string output = getResponse();
-		cout << "Output: " << output << endl;
-		response = parseOutput(output);
-	}
-	catch (const exception &e)
-	{
-		response.setStatus(INTERNAL_SERVER_ERROR);
-		response.setBody("CGI Processing Error");
-	}
 	return response;
 }
 
 string CGI::getResponse()
 {
 	string response;
-	char buffer[4096];
+	char buffer[1024];
 	ssize_t bytesRead;
 
-	FILE *errorFile = fopen(errorFileName.c_str(), "rb");
-	if (errorFile)
-	{
-		while ((bytesRead = fread(buffer, 1, sizeof(buffer), errorFile)) > 0)
-		{
-			response.append(buffer, bytesRead);
-		}
-		fclose(errorFile);
-	}
-	else
-	{
-		cerr << "Error: Unable to open error file: " << errorFileName << endl;
-	}
+	// fcntl(outputPipe[0], F_SETFL, O_NONBLOCK);
+	// fcntl(stderrPipe[0], F_SETFL, O_NONBLOCK);
+	cout << "Waiting for child process to finish" << endl;
+	// while ((bytesRead = read(stderrPipe[0], buffer, sizeof(buffer))) > 0)
+	// {
+	// 	cout << "bytesRead: " << bytesRead << endl;
+	// 	if (bytesRead == 0 || bytesRead == -1)
+	// 		break;
+	// 	response.append(buffer, bytesRead);
+	// }
 
-	response.append("\n");
+	// cout << "Waiting for error process to finish" << endl;
+	
+	// response.append("\n");
 
-	FILE *outputFile = fopen(outputFileName.c_str(), "rb");
-	if (outputFile)
+	while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0)
 	{
-		while ((bytesRead = fread(buffer, 1, sizeof(buffer), outputFile)) > 0)
-		{
-			response.append(buffer, bytesRead);
-			normalOutput.append(buffer, bytesRead);
-		}
-		fclose(outputFile);
+		response.append(buffer, bytesRead);
 	}
-	else
-	{
-		cerr << "Error: Unable to open output file: " << outputFileName << endl;
-	}
-
-	ofstream outFile(outputFileName.c_str());
-	if (outFile.is_open())
-	{
-		outFile << response;
-		outFile.close();
-	}
-	else
-	{
-		cerr << "Error: Unable to open file for writing CGI response" << endl;
-	}
-
-	remove(inputFileName.c_str());
-	remove(errorFileName.c_str());
-	remove(outputFileName.c_str());
-
+	cout << "RESPOOONSE" << response << endl;
 	return response;
 }
 
@@ -383,6 +379,7 @@ ResponseInfos CGI::parseOutput(string output)
 	}
 	else
 		response.setBody(output);
+	
 	ofstream logFile("cgi.log", ios::app);
 	logFile << "CGI Response Status: " << response.getStatus() << endl;
 	logFile << "CGI Response Headers: " << endl;
