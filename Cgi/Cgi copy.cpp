@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Cgi.cpp                                            :+:      :+:    :+:   */
+/*   Cgi copy.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/01/23 23:04:57 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/18 15:23:09 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,7 +109,7 @@ string to_string(int n)
 	return ss.str();
 }
 
-void CGI::setupEnvironment(const Request &req)
+void CGI::setupEnvironment(const Request &req,string root)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
 
