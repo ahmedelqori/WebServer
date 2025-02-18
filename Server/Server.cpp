@@ -123,7 +123,7 @@ void Server::addClientToEpoll(int clientFD)
     struct epoll_event event;
     
     event.data.fd = clientFD;
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN;
     if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1) (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
 }
 
