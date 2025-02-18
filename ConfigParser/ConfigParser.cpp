@@ -13,7 +13,7 @@
 #include "../includes/ConfigParser.hpp"
 
 ServerConfig::ServerConfig():locationIndex(0){};
-ConfigParser::ConfigParser():index(0), current(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
+ConfigParser::ConfigParser(): current(0), index(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
 
 void    ConfigParser::parseFile(const char *file_path)
 {
@@ -34,14 +34,14 @@ void    ConfigParser::fileToVector(std::ifstream &file)
 
 void    ConfigParser::deleteEmptyLines()
 {
-    int index = -1;
+    size_t index = INDEX;
     while (++index < this->fileContent.size()) if (this->fileContent[index] == "")  this->fileContent.erase(this->fileContent.begin() + index--);
 }
 
 void    ConfigParser::checkClosedParenthesis()
 {
     std::vector<std::string>    parenthesis;
-    int                         index, i, tmp;
+    size_t                      index, i, tmp;
 
     for(index = 0; index < this->fileContent.size(); index++)
     {
@@ -65,7 +65,7 @@ void    ConfigParser::checkClosedParenthesis()
 
 void    ConfigParser::parse()
 {
-    while (this->index < this->fileContent.size() && currentServerState != DONE)
+    while (this->index < static_cast<int>(this->fileContent.size()) && currentServerState != DONE)
     {
         switch (currentServerState)
         {
@@ -79,7 +79,7 @@ void    ConfigParser::parse()
             default                         :                                             break;
         }
     }
-    if (DONE && this->index + 1 != this->fileContent.size()) Error(2, ERR_SYNTAX, W_HTTP);
+    if (currentServerState == DONE && this->index + 1 != static_cast<int>(this->fileContent.size())) Error(2, ERR_SYNTAX, W_HTTP);
 }
 
 void    ConfigParser::handleHttpState()
@@ -94,7 +94,7 @@ void    ConfigParser::handleHttpState()
     }
     else
     {
-        if (this->fileContent[++this->index] != C_PAR && this->fileContent.size() == this->index ) Error(3, ERR_SYNTAX, ERR_CLOSE_PAR, W_HTTP);
+        if (this->fileContent[++this->index] != C_PAR && static_cast<int>(this->fileContent.size()) == this->index ) Error(3, ERR_SYNTAX, ERR_CLOSE_PAR, W_HTTP);
         else if (this->fileContent[this->index] != C_PAR) this->currentServerState = SERVER;
         else  (this->currentServerState = DONE);
     }
@@ -130,7 +130,7 @@ void    ConfigParser::handleHostPortState()
     if (hostPort.size() != 2) Error(4, ERR_SYNTAX, W_HOST_PORT, W_SERVER, itoa(this->current).c_str());
     if (is_ipaddress(hostPort[0], INDEX) == false) Error(2, ERR_SYNTAX, W_HOST);
     ArrayPorts = splitString(hostPort[1], ",");
-    while (++index < ArrayPorts.size())
+    while (++index < static_cast<int>(ArrayPorts.size()))
         if (is_number(ArrayPorts[index], INDEX) == false || atoi(ArrayPorts[index].c_str()) < 0 || atoi(ArrayPorts[index].c_str()) > 65535) Error(2, ERR_SYNTAX, W_PORT);
         else this->servers[this->current].setPorts(atoi(ArrayPorts[index].c_str()));
     this->servers[this->current].setHost(hostPort[0]);
@@ -141,7 +141,7 @@ void    ConfigParser::handleHostPortState()
 void    ConfigParser::handleServerNameState()
 {
     std::vector<std::string> server_names;
-    int                      i = 0;
+    size_t                   i = 0;
     if (!this->servers[this->current].getServerNames().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_SERVER_NAMES);
     server_names = splitString(this->fileContent[this->index++], WHITE_SPACES);
     if (server_names[0] != W_SERVER_NAMES || server_names.size() < 2) Error(3, ERR_SYNTAX, W_SERVER_NAMES, W_SERVER, itoa(this->current).c_str());
@@ -156,7 +156,7 @@ void    ConfigParser::handleServerNameState()
 
 void    ConfigParser::parseErrorPages()
 {
-    while(this->index < this->fileContent.size() && currentErrorPages != DONE_ERROR_PAGES)
+    while(this->index < static_cast<int>(this->fileContent.size()) && currentErrorPages != DONE_ERROR_PAGES)
     {
         switch (currentErrorPages)
         {
@@ -213,7 +213,7 @@ void    ConfigParser::handleClientMaxBodySizeState()
 
 void    ConfigParser::parseLocations()
 {
-    while (this->index < this->fileContent.size() && currentLocationState != END_LOCATION)
+    while (this->index < static_cast<int>(this->fileContent.size()) && currentLocationState != END_LOCATION)
     {
         switch (currentLocationState)
         {
@@ -258,8 +258,8 @@ void    ConfigParser::handlePathLocationState()
 
 void    ConfigParser::handleMethodsState()
 {
-    int                         i;
     int                         index = this->servers[this->current].locationIndex;
+    size_t                      i;
     std::vector<std::string>    Array;
 
     i = 1;
