@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/18 17:26:38 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/18 17:55:22 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         responseHeaders.setStatus(response_info.status, response_info.statusMessage);
         for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
         {
-            cout << it->first << " : " << it->second << endl;
+            // cout << it->first << " : " << it->second << endl;
             responseHeaders.addHeader(it->first, it->second);
         }
 
@@ -486,23 +486,26 @@ static ServerConfig getServer(ConfigParser configParser, std::string host)
 
     std::vector<ServerConfig> currentServers = configParser.servers;
     size_t i = 0;
-    while (i++ < currentServers.size())
+    while (i < currentServers.size())
     {
         stringstream server(currentServers[i].getHost(), ios_base::app | ios_base::out);
         server << ':';
         server << currentServers[i].getPort();
         if (!host.empty() && server.str() == host)
             return currentServers[i];
+        i++;
     }
     i = 0;
-    while (i++ < currentServers.size())
+    while (i < currentServers.size())
     {
         size_t j = 0;
-        while (j++ < currentServers[i].getServerNames().size())
+        while (j < currentServers[i].getServerNames().size())
         {
             if (!host.empty() && currentServers[i].getServerNames()[j] == host)
                 return currentServers[i];
+            j++;
         }
+        i++;
     }
 
     return currentServers[0];
