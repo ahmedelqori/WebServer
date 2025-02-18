@@ -71,6 +71,10 @@ class LocationConfig
         std::vector <std::string>               methods;
         std::map<std::string, std::string>      cgiExtension;
     public:
+        LocationConfig();
+        LocationConfig(const LocationConfig &);
+        LocationConfig &operator=(const LocationConfig &);
+
         int                                     getRedirectionCode() const;
         bool                                    getDirectoryListing() const;
         std::string                             getPath() const; 

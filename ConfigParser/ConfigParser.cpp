@@ -12,8 +12,35 @@
 
 #include "../includes/ConfigParser.hpp"
 
-ServerConfig::ServerConfig():locationIndex(0){};
-ConfigParser::ConfigParser(): current(0), index(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
+ServerConfig::ServerConfig():       locationIndex(0){};
+ConfigParser::ConfigParser():       current(0), index(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
+LocationConfig::LocationConfig()    {};
+
+
+LocationConfig::LocationConfig(const LocationConfig &L)
+{
+    path = L.getPath();
+    root = L.getRoot();
+    methods = L.getMethods();
+    indexFile = L.getIndexFile();
+    cgiExtension = L.getCgiExtension();
+    redirectionPath = L.getRedirectionPath();
+    redirectionCode = L.getRedirectionCode();
+    directoryListing = L.getDirectoryListing();
+}
+LocationConfig &LocationConfig::operator=(const LocationConfig &L)
+{
+    if (this == &L) return *this;
+    path = L.getPath();
+    root = L.getRoot();
+    methods = L.getMethods();
+    indexFile = L.getIndexFile();
+    cgiExtension = L.getCgiExtension();
+    redirectionPath = L.getRedirectionPath();
+    redirectionCode = L.getRedirectionCode();
+    directoryListing = L.getDirectoryListing();
+    return *this;
+}
 
 void    ConfigParser::parseFile(const char *file_path)
 {
