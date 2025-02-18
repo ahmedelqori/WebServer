@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/16 15:23:29 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/17 19:56:33 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -207,7 +207,6 @@ bool HttpParser::isBadUri(const std::string &uri)
     {
         char c = uri[i];
 
-        // Allow percent-encoded characters
         if (c == '%')
         {
             if (i + 2 >= uri.length() ||
@@ -269,7 +268,7 @@ std::string HttpParser::validatePath(const std::string &path)
     // Check for bad URI characters
     if (isBadUri(path))
     {
-        std::cout << "Is bad uri " << std::endl;
+        // std::cout << "Is bad uri " << std::endl;
         throw BAD_REQUEST;
     }
 
