@@ -12,7 +12,7 @@
 
 #include "../includes/Server.hpp"
 
-Server::Server() : currentStateServer(INIT), serverIndex(INDEX){}
+Server::Server() :  serverIndex(INDEX), currentStateServer(INIT){}
 
 ConnectionStatus::ConnectionStatus(){
     time_t now = time(NULL);
@@ -22,7 +22,7 @@ ConnectionStatus::ConnectionStatus(){
 
 Server::~Server()
 {
-    int index = INDEX;
+    size_t index = INDEX;
 
     while (++index < this->res.size()) freeaddrinfo(this->res[index]);
 }
@@ -30,7 +30,7 @@ Server::~Server()
 void Server::CreateAddrOfEachPort(int serverIndex)
 {
     static int  indexRes  = 0; 
-    int         index     = INDEX;
+    size_t      index     = INDEX;
 
     while (++index < this->configFile.servers[serverIndex].getPorts().size())
     {
@@ -46,7 +46,7 @@ void Server::CreateAddrOfEachPort(int serverIndex)
 
 void Server::createLinkedListOfAddr()
 {
-    int index = INDEX;
+    size_t index = INDEX;
 
     while (++index < this->configFile.servers.size())
         this->CreateAddrOfEachPort(index);
@@ -55,10 +55,9 @@ void Server::createLinkedListOfAddr()
 
 void Server::createSockets()
 {
-    int index = INDEX;
-    int sockFD = INDEX;
-    int opt = 1;
-    int flags;
+    size_t  index = INDEX;
+    int     sockFD = INDEX;
+    int     opt = 1;
 
     while (++index < this->res.size())
     {
@@ -73,8 +72,8 @@ void Server::createSockets()
 
 void Server::bindSockets()
 {
-    int index = INDEX;
-    int status = INDEX;
+    size_t  index = INDEX;
+    int     status = INDEX;
 
     while (++index < this->socketContainer.size())
     {
@@ -86,8 +85,8 @@ void Server::bindSockets()
 
 void Server::listenForConnection()
 {
-    int index = INDEX;
-    int status = INDEX;
+    size_t  index = INDEX;
+    int     status = INDEX;
 
     while (++index < this->res.size())
     {
@@ -172,7 +171,7 @@ void Server::acceptAndAnswer(int index)
 
 void Server::findServer()
 {
-    int index           = INDEX;
+    int index     = INDEX;
     
     while (++index < this->nfds)
     {
@@ -237,7 +236,8 @@ void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_
 
 void    Server::CheckForTimeOut(int fd)
 {
-    int i = -1;
+    size_t i = INDEX;
+
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
@@ -248,14 +248,16 @@ void    Server::CheckForTimeOut(int fd)
 
 void    Server::timeoutChecker()
 {
-    int i = -1;
+    size_t i = INDEX;
+
     while (++i < this->ClientStatus.size())
         (updateTime(this->ClientStatus[i].first),CheckForTimeOut(this->ClientStatus[i].first));
 }
 
 void    Server::updateTime(int fd)
 {
-    int i = -1;
+    size_t i = INDEX;
+
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
@@ -264,7 +266,8 @@ void    Server::updateTime(int fd)
 
 void    Server::resetTime(int fd)
 {
-    int i = -1;
+    size_t i = INDEX;
+
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
@@ -274,7 +277,7 @@ void    Server::resetTime(int fd)
 
 void    Server::deleteFromTimeContainer(int fd)
 {
-    int i = -1;
+    size_t i = INDEX;
     
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;

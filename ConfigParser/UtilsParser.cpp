@@ -33,7 +33,6 @@ std::vector<std::string> splitString(const std::string& input, const std::string
 {
     std::vector<std::string> tokens;
     std::string token;
-    size_t start = 0;
     
     for (size_t i = 0; i < input.length(); ++i) {
         if (delimiters.find(input[i]) != std::string::npos) {
@@ -82,16 +81,17 @@ bool is_ipaddress(std::string str, int index)
     while (str[++index]) if (str[index] == '.') countDots++;
     if (countDots != 3) return false;
     Array = splitString(str, ".");
-    if (Array.size() != 4 && ((index = INDEX) || true)) return false;
-    while (++index < Array.size() && ((byte = atoi(Array[index].c_str()) )|| true)) if(Array[index] != itoa(byte) || byte < 0 || byte > 255) return false;
+    if (Array.size() != 4) return false;
+    index = INDEX;
+    while (++index < static_cast<int>(Array.size()) && ((byte = atoi(Array[index].c_str()) )|| true)) if(Array[index] != itoa(byte) || byte < 0 || byte > 255) return false;
     return true;
 }
 
 bool is_valid_server_name(std::string str, int index)
 {
-    while (++index < str.size())
+    while (++index < static_cast<int>(str.size()))
     {
-        if (str[index] == '-' && (index == 0 || index == str.size() - 1)) return false;
+        if (str[index] == '-' && (index == 0 || index == static_cast<int>(str.size()) - 1)) return false;
         if (str[index] != '-' && (isalpha(str[index]) == false && isdigit(str[index]) == false)) return false;
     }
     return true;
@@ -100,12 +100,11 @@ bool is_valid_server_name(std::string str, int index)
 bool is_hostname(std::string str, int index)
 {
     std::vector<std::string>    Array;
-    int                         checkDots;
 
-    while (str[++index])if(str[index] == '.' && (index == 0 || index == str.size() - 1 || str[index - 1] == '.' || str[index + 1] == '.')) return false;
+    while (str[++index])if(str[index] == '.' && (index == 0 || index == static_cast<int>(str.size()) - 1 || str[index - 1] == '.' || str[index + 1] == '.')) return false;
     Array = splitString(str, ".");
     index = INDEX;
-    while (++index < Array.size())if (is_valid_server_name(Array[index], INDEX) == false) return false;
+    while (++index < static_cast<int>(Array.size()))if (is_valid_server_name(Array[index], INDEX) == false) return false;
     return true;
 }
 
@@ -128,6 +127,7 @@ bool is_statuscode(std::string str, int index)
 {
     int                         status;
 
+    (void)index;
     status = atoi(str.c_str());
     if (itoa(status) != str) return false;
     if (status < 100 || status > 999) return false;
@@ -136,7 +136,7 @@ bool is_statuscode(std::string str, int index)
 
 bool is_duplicated(std::vector<std::string> vec, std::string v, int index)
 {
-    while (++index < vec.size()) if (vec[index] == v) return false;
+    while (++index < static_cast<int>(vec.size())) if (vec[index] == v) return false;
     return true;
 }
 
