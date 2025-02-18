@@ -12,7 +12,6 @@ private:
     std::string version;
     std::map<std::string, std::string> headers;
     std::string body;
-    bool is_chunked;
     std::map<std::string, std::string> query_params;
 
 public:
