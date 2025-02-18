@@ -3,19 +3,26 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 19:09:49 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/17 16:56:11 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
-Server::Server() : currentStateServer(INIT), serverIndex(INDEX){}
+Server::Server() :  serverIndex(INDEX), currentStateServer(INIT){}
+
+ConnectionStatus::ConnectionStatus(){
+    time_t now = time(NULL);
+    this->acceptTime = now;
+    this->lastActivityTime = now;
+}
+
 Server::~Server()
 {
-    int index = INDEX;
+    size_t index = INDEX;
 
     while (++index < this->res.size()) freeaddrinfo(this->res[index]);
 }
@@ -23,7 +30,7 @@ Server::~Server()
 void Server::CreateAddrOfEachPort(int serverIndex)
 {
     static int  indexRes  = 0; 
-    int         index     = INDEX;
+    size_t      index     = INDEX;
 
     while (++index < this->configFile.servers[serverIndex].getPorts().size())
     {
@@ -39,7 +46,7 @@ void Server::CreateAddrOfEachPort(int serverIndex)
 
 void Server::createLinkedListOfAddr()
 {
-    int index = INDEX;
+    size_t index = INDEX;
 
     while (++index < this->configFile.servers.size())
         this->CreateAddrOfEachPort(index);
@@ -48,10 +55,9 @@ void Server::createLinkedListOfAddr()
 
 void Server::createSockets()
 {
-    int index = INDEX;
-    int sockFD = INDEX;
-    int opt = 1;
-    int flags;
+    size_t  index = INDEX;
+    int     sockFD = INDEX;
+    int     opt = 1;
 
     while (++index < this->res.size())
     {
@@ -66,8 +72,8 @@ void Server::createSockets()
 
 void Server::bindSockets()
 {
-    int index = INDEX;
-    int status = INDEX;
+    size_t  index = INDEX;
+    int     status = INDEX;
 
     while (++index < this->socketContainer.size())
     {
@@ -79,8 +85,8 @@ void Server::bindSockets()
 
 void Server::listenForConnection()
 {
-    int index = INDEX;
-    int status = INDEX;
+    size_t  index = INDEX;
+    int     status = INDEX;
 
     while (++index < this->res.size())
     {
@@ -94,7 +100,7 @@ void Server::init_epoll()
 {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
-    this->epollFD = epoll_create(1024);
+    this->epollFD = epoll_create(1);
     if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
     this->registerAllSockets();
     currentStateServer = EPOLL;
@@ -108,8 +114,7 @@ void Server::registerAllSockets()
     {
         this->event.events = EPOLLIN;
         this->event.data.fd = this->socketContainer[index];
-        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) 
-            (ServerLogger("Cannot Add Register Client", Logger::ERROR, false));
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) (ServerLogger("Cannot Add Register Client", Logger::ERROR, false));
     }
 }
 
@@ -119,8 +124,7 @@ void Server::addClientToEpoll(int clientFD)
     
     event.data.fd = clientFD;
     event.events = EPOLLIN | EPOLLET;
-    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1)
-        (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
+    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1) (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
 }
 
 void Server::acceptConnection(int index)
@@ -136,7 +140,6 @@ void Server::acceptConnection(int index)
         if (errno != EAGAIN && errno != EWOULDBLOCK)  (ServerLogger("Cannot Accept Connection", Logger::ERROR, false));
         return;
     }
-    std::cout << "Accept: " << acceptFD << std::endl;
     ClientStatus.push_back(make_pair(acceptFD, ConnectionStatus()));
     this->addClientToEpoll(acceptFD);
 }
@@ -152,35 +155,28 @@ void Server::processData(int index)
 
     if (bytesReceived <= 0)
     {
-        epoll_ctl(epollFD, EPOLL_CTL_DEL, events[index].data.fd, NULL);
-        (close(events[index].data.fd), ServerLogger("Client disconnected", Logger::INFO, false));
+        (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
         return;
     }
-    std::cout << "Process Data" << std::endl;
-    this->updateTime(index);
-    this->CheckForTimeOut(index);
+    this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty())
-        this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
 }
 
 void Server::acceptAndAnswer(int index)
 {
-    if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[index].data.fd) != this->socketContainer.end())
-        acceptConnection(index);
-    else
-        processData(index);
+    if (std::find(this->socketContainer.begin(), this->socketContainer.end(), events[index].data.fd) != this->socketContainer.end()) acceptConnection(index);
+    else processData(index);
 }
 
 void Server::findServer()
 {
-    int index           = INDEX;
+    int index     = INDEX;
     
     while (++index < this->nfds)
     {
         if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
-        if (this->events[index].events & EPOLLOUT) 
-            (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->CheckForTimeOut(events[index].data.fd));
+        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->resetTime(events[index].data.fd));
     }
 }
 
@@ -189,8 +185,7 @@ void Server::loopAndWait()
     ServerLogger("Server Started", Logger::INFO, false);
     while (true)
     {
-        this->nfds = epoll_wait(epollFD, events, 1024, 5000);
-        std::cout << "Epoll wait: " << this->nfds << std::endl;
+        this->nfds = epoll_wait(epollFD, events, MAX_EVENTS, 5000);
         if (this->nfds == -1) {
             if (errno == EINTR) {
                 ServerLogger("epoll_wait interrupted by signal. Retrying...", Logger::WARNING, false);
@@ -200,13 +195,7 @@ void Server::loopAndWait()
                 Error(2, "Critical Error in Server:: ", "epoll_wait");
             }
         }
-        if (this->nfds == 0)
-        {
-            int i = -1;
-            while (++i < this->ClientStatus.size())
-                (updateTime(this->ClientStatus[i].first),CheckForTimeOut(this->ClientStatus[i].first));
-            
-        }
+        if (this->nfds == 0) this->timeoutChecker();
         if (this->nfds > 0) this->findServer();
     }
     close(epollFD);
@@ -247,33 +236,57 @@ void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_
 
 void    Server::CheckForTimeOut(int fd)
 {
-    int i = -1;
+    size_t i = INDEX;
+
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
-    std::cout << this->ClientStatus[i].first <<"\t" << ClientStatus[i].second.acceptTime << "\t" << ClientStatus[i].second.lastActivityTime << std::endl; 
 
-    std::string body = "Request Timeout"; 
-    std::ostringstream response;
-    response << "HTTP/1.1 408 Request Timeout\r\n";
-    response << "Content-Type: text/plain\r\n";
-    response << "Content-Length: " << body.size() << "\r\n";
-    response << "\r\n";
-    response << body;
-    std::string res = response.str();
-    
     if (ClientStatus[i].second.isTimedOut())
-    {
-        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, res.c_str(),res.size(),0),requestHandler.cleanupConnection(epollFD,fd));
-    }
+        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, TIMEOUT_MESSAGE, strlen(TIMEOUT_MESSAGE),0),requestHandler.cleanupConnection(epollFD,fd));
+}
+
+void    Server::timeoutChecker()
+{
+    size_t i = INDEX;
+
+    while (++i < this->ClientStatus.size())
+        (updateTime(this->ClientStatus[i].first),CheckForTimeOut(this->ClientStatus[i].first));
 }
 
 void    Server::updateTime(int fd)
 {
-    int i = -1;
+    size_t i = INDEX;
+
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
-    std::cout << "Hi " <<std::endl;
     ClientStatus[i].second.lastActivityTime = time(NULL);
+}
+
+void    Server::resetTime(int fd)
+{
+    size_t i = INDEX;
+
+    while (++i < this->ClientStatus.size())
+        if (ClientStatus[i].first == fd) break;
+    if (i == this->ClientStatus.size()) return;
+    ClientStatus[i].second.acceptTime = time(NULL);
+    ClientStatus[i].second.lastActivityTime = time(NULL);
+}
+
+void    Server::deleteFromTimeContainer(int fd)
+{
+    size_t i = INDEX;
+    
+    while (++i < this->ClientStatus.size())
+        if (ClientStatus[i].first == fd) break;
+    if (i == this->ClientStatus.size()) return;
+    ClientStatus.erase(ClientStatus.begin() + i);
+}
+
+
+bool   ConnectionStatus::isTimedOut() const
+{
+    return difftime(lastActivityTime, acceptTime) >= TIMEOUT;
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/16 18:55:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/17 16:56:19 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,24 +30,17 @@
 #include <ctime>
 
 
-# define TIMEOUT 5
+# define TIMEOUT 45
+# define TIMEOUT_MESSAGE "HTTP/1.1 408 Request Timeout\r\n\r\n"
 
 class ConnectionStatus
 {
     public:
-        ConnectionStatus(){
-            time_t now = time(NULL);
-            this->acceptTime = now;
-            this->lastActivityTime = now;
-        }
+        time_t                                              acceptTime;
+        time_t                                              lastActivityTime;
 
-        bool isTimedOut() const
-        {
-            return difftime(lastActivityTime, acceptTime) >= 5;
-        }
-
-        time_t acceptTime;
-        time_t lastActivityTime;
+        ConnectionStatus();
+        bool                                                isTimedOut() const;
 };
 
 enum StateServer
@@ -64,42 +57,45 @@ enum StateServer
 class  Server
 {
     private:
-        int epollFD;
-        struct epoll_event event;
-        struct epoll_event events[1024];
-        int nfds;
+        int                                                 nfds;
+        int                                                 epollFD;
+        struct                                              epoll_event event;
+        struct                                              epoll_event events[MAX_EVENTS];
+
     public:
-        ConfigParser configFile;
-        RequestHandler requestHandler;
-        std::vector<addrinfo *> res;
-        std::vector<int> socketContainer;
-        std::vector<std::pair<int, ConnectionStatus> > ClientStatus;
-        addrinfo hints;
-        Logger logger;
-        int serverIndex;
-        
-        StateServer currentStateServer; 
+        int                                                 serverIndex;
+        Logger                                              logger;
+        addrinfo                                            hints;
+        StateServer                                         currentStateServer; 
+        ConfigParser                                        configFile;
+        RequestHandler                                      requestHandler;
+        std::vector<int>                                    socketContainer;
+        std::vector<addrinfo *>                             res;
+        std::vector<std::pair<int, ConnectionStatus> >      ClientStatus;
 
         Server();
         ~Server();
     
-        void    start();
-        void    init();
-        void    ServerLogger(std::string message,Logger::Level level, bool is_sub);
-        void    createLinkedListOfAddr();
-        void    CreateAddrOfEachPort(int serverIndex);
-        void    createSockets();
-        void    bindSockets();
-        void    listenForConnection();
-        void    acceptAndAnswer(int index);
-        void    init_epoll();
-        void    registerAllSockets();
-        void    loopAndWait();
-        void    findServer();
-        void    processData(int index);
-        void    acceptConnection(int index);  
-        void    addClientToEpoll(int clientFD);
-        void    CheckForTimeOut(int);
-        void    updateTime(int);
+        void                                                init();
+        void                                                start();
+        void                                                findServer();
+        void                                                init_epoll();
+        void                                                loopAndWait();
+        void                                                bindSockets();
+        void                                                resetTime(int);
+        void                                                updateTime(int);
+        void                                                createSockets();
+        void                                                timeoutChecker();
+        void                                                processData(int);
+        void                                                acceptAndAnswer(int);
+        void                                                CheckForTimeOut(int);
+        void                                                registerAllSockets();
+        void                                                addClientToEpoll(int);
+        void                                                acceptConnection(int);  
+        void                                                listenForConnection();
+        void                                                createLinkedListOfAddr();
+        void                                                CreateAddrOfEachPort(int);
+        void                                                deleteFromTimeContainer(int);
+        void                                                ServerLogger(std::string,Logger::Level, bool);
 };
 #endif
