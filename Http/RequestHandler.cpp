@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/17 14:58:40 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/18 17:55:22 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,13 +44,19 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         responseHeaders.setStatus(response_info.status, response_info.statusMessage);
         for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
         {
-            cout << it->first << " : " << it->second << endl;
+            // cout << it->first << " : " << it->second << endl;
             responseHeaders.addHeader(it->first, it->second);
         }
 
         string responseHeadersStr = responseHeaders.getResponse();
 
         ssize_t bytes_sent = send(current_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+        if (bytes_sent <= 0)
+        {
+
+            cleanupConnection(epoll_fd, current_fd);
+            return;
+        }
         response_info.headers.clear();
         responses_info[current_fd].bytes_written = 0;
         return;
@@ -479,24 +485,27 @@ static ServerConfig getServer(ConfigParser configParser, std::string host)
 {
 
     std::vector<ServerConfig> currentServers = configParser.servers;
-    int i = INDEX;
-    while (++i < currentServers.size())
+    size_t i = 0;
+    while (i < currentServers.size())
     {
         stringstream server(currentServers[i].getHost(), ios_base::app | ios_base::out);
         server << ':';
         server << currentServers[i].getPort();
         if (!host.empty() && server.str() == host)
             return currentServers[i];
+        i++;
     }
-    i = INDEX;
-    while (++i < currentServers.size())
+    i = 0;
+    while (i < currentServers.size())
     {
-        int j = INDEX;
-        while (++j < currentServers[i].getServerNames().size())
+        size_t j = 0;
+        while (j < currentServers[i].getServerNames().size())
         {
             if (!host.empty() && currentServers[i].getServerNames()[j] == host)
                 return currentServers[i];
+            j++;
         }
+        i++;
     }
 
     return currentServers[0];
@@ -510,7 +519,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
     size_t bestMatchLength = 0;
     bool found = false;
 
-    for (int i = 0; i < locs.size(); i++)
+    for (size_t i = 0; i < locs.size(); i++)
     {
         if (url.find(locs[i].getPath()) == 0)
         {
