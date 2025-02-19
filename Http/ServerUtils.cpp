@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/17 15:01:46 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 04:01:52 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,25 +30,25 @@ File_Type ServerUtils::checkResource(const std::string &fullPath)
     }
 }
 
-static std::size_t getFileSize(const std::string& filePath) {
+static std::size_t getFileSize(const std::string &filePath)
+{
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary); // Open the file in binary mode
-    if (!file) {
+    if (!file)
+    {
         std::cerr << "Error: Could not open file " << filePath << std::endl;
-        return 0; // Return 0 if the file could not be opened
+        return 0;
     }
-
-    file.seekg(0, std::ios::end); // Move the file pointer to the end
-    std::size_t fileSize = file.tellg(); // Get the position of the pointer (file size)
-    file.close(); // Close the file
-
+    file.seekg(0, std::ios::end);
+    std::size_t fileSize = file.tellg();
+    file.close();
     return fileSize;
 }
 
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
 
-    if (access(filePath.c_str(), R_OK) != 0)
-        return ServerUtils::ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
+    if (access(filePath.c_str(), F_OK | R_OK) != 0)
+        throw FORBIDEN;
 
     ResponseInfos response;
     response.filePath = filePath;
@@ -62,39 +62,9 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
     if (filePath.find_last_of('.') != string::npos)
     {
         string ext = filePath.substr(filePath.find_last_of('.'));
-        // response.headers["Connection"] = "keep-alive";
         response.headers["Content-Type"] = getMimeType(ext);
     }
     return response;
-}
-
-ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
-{
-
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
-    {
-        string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
-        return handleRedirect(redirectUrl, REDIRECTED);
-    }
-    if (!ressource.indexFile.empty())
-    {
-
-        string indexPath;
-        if (ressource.autoindex)
-            indexPath = ressource.root + "/" + ressource.indexFile;
-        else
-            indexPath = ressource.root + "/" + ressource.url + '/' + ressource.indexFile;
-        // cout << "index is " << indexPath << endl;
-        struct stat indexStat;
-        if (stat(indexPath.c_str(), &indexStat) == 0)
-        {
-            return ServerUtils::serveFile(indexPath, OK);
-        }
-    }
-    // cout << "Hi 0" << endl;
-    if (ressource.autoindex)
-        return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
-    return ServerUtils::ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
 }
 
 ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
@@ -107,7 +77,6 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
     infos.headers["Location"] = redirectUrl;
     infos.status = statusCode;
     infos.statusMessage = "Moved permanently";
-
     return infos;
 }
 
@@ -117,7 +86,7 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
     DIR *dir = opendir(dirPath.c_str());
     if (!dir)
     {
-        return ressourceToResponse(ServerUtils::generateErrorPage(FORBIDEN), FORBIDEN);
+        throw FORBIDEN;
     }
 
     struct dirent *entry;
@@ -196,7 +165,7 @@ string ServerUtils::getMimeType(const std::string &filePath)
             return mimeTypes[extension];
         }
     }
-    return "application/octet-stream"; // Default MIME type for binary files
+    return "application/octet-stream";
 }
 
 ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
@@ -208,13 +177,13 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
     stringstream ss;
     ss << ressource.length();
     response_infos.headers["Content-Length"] = ss.str();
+    response_infos.headers["Content-Type"] = "text/html";
 
     return response_infos;
 }
 
 string ServerUtils::generateErrorPage(int statusCode)
 {
-    cout << "Hello from generateErrorPage" << endl;
     stringstream errorPage;
     errorPage << "<html><body><h1>" << statusCode << " " << "</h1></body></html>";
     return errorPage.str();

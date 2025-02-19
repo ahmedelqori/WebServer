@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:14 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/18 21:06:56 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -203,7 +203,7 @@ void    ConfigParser::handleErrorPagesState()
     {
         if (this->fileContent[this->index++] != W_ERRORS_PAGES) Error(2, ERR_SYNTAX, W_ERRORS_PAGES);
         if (this->fileContent[this->index++] != O_PAR) Error(3, ERR_SYNTAX, ERR_OPEN_PAR, W_ERRORS_PAGES);
-        (this->currentErrorPages = ERROR_FILE ,errorPagesState = true);
+        (this->currentErrorPages = ERROR ,errorPagesState = true);
     }
     else
     {

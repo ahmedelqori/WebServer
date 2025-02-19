@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:23 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/21 02:28:30 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 02:47:15 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -122,6 +122,17 @@ void Request::setBody(const std::string &body)
 void Request::setQueryParams(const std::map<std::string, std::string> &query_params)
 {
     this->query_params = query_params;
+}
+
+void Request::clearRequest()
+{
+    method.clear();
+    path.clear();
+    decoded_path.clear();
+    version.clear();
+    headers.clear();
+    body.clear();
+    query_params.clear();
 }
 
 const std::string &Request::getMethod() const

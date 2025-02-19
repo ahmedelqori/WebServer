@@ -17,6 +17,7 @@
 class ServerUtils
 {
 public:
+    map<string,string>error_pages;
     ServerUtils();
     static string getMimeType(const std::string &filePath);
     static File_Type checkResource(const std::string &fullPath);
