@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/19 03:42:46 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 04:03:47 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -149,7 +149,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     {
         if (isNewClient(client_sockfd))
         {
-            cout << "New client connected " << endl;
+            //cout << "New client connected " << endl;
             reqBuffer += req;
             if (!validCRLF)
             {
@@ -241,6 +241,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
     catch (int code)
     {
+
+        //cout << "exited with code " << code  << endl;
         map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
         if (it != chunked_uploads.end())
         {
@@ -256,9 +258,9 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code), code);
         else
         {
+               //cout << "Wlcome " << code  << endl;
             responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
-                Request::generateErrorPage(code),
-                code);
+                ServerUtils::generateErrorPage(code),code);
         }
 
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
@@ -314,7 +316,6 @@ bool RequestHandler::is_CgiRequest(string url, map<string, string> cgiInfos)
 
 ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
 {
-    cout << "URL :     " << ressource.url << endl;
     if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
     {
         string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
@@ -348,7 +349,7 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
 
-    cout << "GET :" << request.getDecodedPath() << endl;
+    //cout << "GET :" << request.getDecodedPath() << endl;
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
@@ -365,23 +366,12 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         ressource.url = url;
 
         if (is_CgiRequest(url, bestMatch.getCgiExtension()))
-
         {
-
-            cout << "IS CGI REQUEST MAIN 11" << endl;
             try
             {
-                // map<string, string> cgi_info = bestMatch.getCgiExtension();
-                // map<string, string>::iterator it = cgi_info.begin();
-                // cout << "CGI Extenstion INFO 1" << endl;
-                // for (; it != cgi_info.end(); it++)
-                // {
-                //     cout << it->first << " : " << it->second << endl;
-                // }
                 CGI cgi;
                 ResponseInfos response;
                 response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
-                // cout << response << endl;
                 return response;
             }
             catch (CGIException &e)
@@ -426,20 +416,11 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
 
     if (is_CgiRequest(url, bestMatch.getCgiExtension()))
     {
-        cout << "IS CGI REQUEST 2" << endl;
         try
         {
-            // map<string, string> cgi_info = bestMatch.getCgiExtension();
-            // map<string, string>::iterator it = cgi_info.begin();
-            cout << "CGI Extenstion INFO 2" << endl;
-            // for (; it != cgi_info.end(); it++)
-            // {
-            //     cout << it->first << " : " << it->second << endl;
-            // }
             CGI cgi;
             ResponseInfos response;
             response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
-            // cout << response << endl;
             return response;
         }
         catch (CGIException &e)

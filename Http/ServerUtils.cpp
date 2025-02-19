@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/19 03:21:00 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 04:01:52 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,11 +48,7 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
 
     if (access(filePath.c_str(), F_OK | R_OK) != 0)
-        return ServerUtils::ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
-    if (filePath.find(".php") != string::npos)
-    {
-        cout << "IS CGI REQUEST" << endl;
-    }
+        throw FORBIDEN;
 
     ResponseInfos response;
     response.filePath = filePath;
@@ -70,8 +66,6 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
     }
     return response;
 }
-
-
 
 ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
 {
@@ -92,7 +86,7 @@ ResponseInfos ServerUtils::generateDirectoryListing(const string &dirPath)
     DIR *dir = opendir(dirPath.c_str());
     if (!dir)
     {
-        return ressourceToResponse(ServerUtils::generateErrorPage(FORBIDEN), FORBIDEN);
+        throw FORBIDEN;
     }
 
     struct dirent *entry;
@@ -183,6 +177,7 @@ ResponseInfos ServerUtils::ressourceToResponse(string ressource, int code)
     stringstream ss;
     ss << ressource.length();
     response_infos.headers["Content-Length"] = ss.str();
+    response_infos.headers["Content-Type"] = "text/html";
 
     return response_infos;
 }
