@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/19 00:02:58 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 03:21:00 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,10 +47,12 @@ static std::size_t getFileSize(const std::string &filePath)
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
 
-    cout << "hi " << code <<  endl;
-
     if (access(filePath.c_str(), F_OK | R_OK) != 0)
         return ServerUtils::ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
+    if (filePath.find(".php") != string::npos)
+    {
+        cout << "IS CGI REQUEST" << endl;
+    }
 
     ResponseInfos response;
     response.filePath = filePath;
@@ -69,37 +71,7 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
     return response;
 }
 
-ResponseInfos ServerUtils::serverRootOrRedirect(RessourceInfo ressource)
-{
 
-    if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
-    {
-        string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
-        return handleRedirect(redirectUrl, REDIRECTED);
-    }
-    if (!ressource.indexFile.empty())
-    {
-
-        string indexPath;
-        if (ressource.autoindex)
-            indexPath = ressource.root + "/" + ressource.indexFile;
-        else
-            indexPath = ressource.root + "/" + ressource.url + '/' + ressource.indexFile;
-        struct stat indexStat;
-        if (stat(indexPath.c_str(), &indexStat) == 0)
-        {
-            return ServerUtils::serveFile(indexPath, OK);
-        }
-    }
-    if (ressource.autoindex)
-        return ServerUtils::generateDirectoryListing(ressource.root + ressource.url);
-    string errPAth = ressource.errors_pages.find(NOT_FOUND_CODE) != ressource.errors_pages.end() ? ressource.errors_pages[NOT_FOUND_CODE] : generateErrorPage(NOT_FOUND);
-    if (access(errPAth.c_str(), F_OK | R_OK) == 0)
-    {
-        return serveFile(errPAth, NOT_FOUND);
-    }
-    return ServerUtils::ressourceToResponse(generateErrorPage(NOT_FOUND), NOT_FOUND);
-}
 
 ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusCode)
 {

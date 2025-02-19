@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Cgi.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/18 18:52:48 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/19 02:59:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -196,6 +196,8 @@ ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string
 
 	cout << "CGI Path: " << cgi << endl;
 	cgi = string(root) + string(cgi); 
+
+	cout << "HELOOOOOO "<< cgi << endl;
 
 	setupEnvironment(request,root);
 

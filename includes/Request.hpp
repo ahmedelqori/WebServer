@@ -24,6 +24,7 @@ public:
     const std::string &getHeader(const std::string &key) const;
     bool hasHeader(const std::string &key) const;
     const std::string &getBody() const;
+    void clearRequest();
     const std::map<std::string, std::string> &getQueryParams() const;
     static std::string generateErrorPage(const int code);
     static std::string generateStatusMsg(const int code);

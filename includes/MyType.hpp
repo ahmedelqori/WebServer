@@ -78,7 +78,8 @@ struct RessourceInfo
     string path;
     string url;
     string root;
-    map<string,string>errors_pages;
+    map<string,string> errors_pages;
+    map<string,string>cgi_infos;
     string indexFile;
     string redirect;
     bool autoindex;

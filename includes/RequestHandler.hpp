@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/18 23:24:27 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 02:48:01 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,6 +102,9 @@ public:
     string reqBuffer;
     bool validCRLF;
     ConfigParser server_config;
+
+
+    ResponseInfos serverRootOrRedirect(RessourceInfo ressource);
     ServerConfig getServer(ConfigParser configParser, std::string host);
     bool hasErrorPage(int code);
     string getErrorPage(int code);
@@ -111,7 +114,6 @@ public:
     bool is_CgiRequest(string url, map<string, string> cgiInfos);
     ResponseInfos handleGet(const Request &request);
     void checkMaxBodySize();
-    ResponseInfos handlePost(const Request &request);
     void cleanupConnection(int epoll_fd, int fd);
     void processPostData(int client_sockfd, const string &data, int epoll_fd);
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
