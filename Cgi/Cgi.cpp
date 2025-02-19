@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Cgi.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/19 02:59:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/19 21:14:08 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,7 +99,7 @@ string to_string1(int n)
 	return ss.str();
 }
 
-void CGI::setupEnvironment(const Request &req,string root)
+void CGI::setupEnvironment(const Request &req,string root,string cgi,string path)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
 
@@ -132,10 +132,12 @@ void CGI::setupEnvironment(const Request &req,string root)
 		queryString += it->first + "=" + it->second;
 	}
 	env["QUERY_STRING"] = queryString;
-	env["SCRIPT_NAME"] = req.getPath();
+	env["SCRIPT_NAME"] = path;
 
 	env["PATH_INFO"] = env["SCRIPT_NAME"];
-	string pathtranslated = root + req.getPath();
+	(void)root;
+	string pathtranslated = cgi;
+	cout << "Path translated: " << pathtranslated << endl;
 	env["PATH_TRANSLATED"] = pathtranslated;
 	env["SCRIPT_FILENAME"] = env["PATH_TRANSLATED"];
 
@@ -193,13 +195,13 @@ ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string
 	
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
-
+	string path = cgi;
 	cout << "CGI Path: " << cgi << endl;
 	cgi = string(root) + string(cgi); 
 
 	cout << "HELOOOOOO "<< cgi << endl;
 
-	setupEnvironment(request,root);
+	setupEnvironment(request,root ,cgi,path);
 
 	if (pipe(inputPipe) == -1 || pipe(outputPipe) == -1 || pipe(stderrPipe) == -1)
 	{
