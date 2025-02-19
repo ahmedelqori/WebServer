@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 11:26:31 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/18 18:43:42 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/19 21:14:28 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ public:
 	string normalOutput;
 	void handleChunkedTransfer();
 	void processUpload(const string &uploadPath);
-	void setupEnvironment(const Request &req,string root);
+	void setupEnvironment(const Request &req,string root, string cgi,string);
 	ResponseInfos parseOutput(string output);
 	string getErrorResponse();
 	CGI(const string &workDir, const string &upDir);
