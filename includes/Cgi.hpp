@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 11:26:31 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/19 21:14:28 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/20 11:53:41 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include "MyType.hpp"
 #include "Request.hpp"
+#include "RequestHandler.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -32,6 +33,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sstream>
+
+#define CGI_TIMEOUT 5
 
 class CGI
 {
