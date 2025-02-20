@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/18 18:13:27 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 11:18:44 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ enum StateServer
     BIND,
     LISTEN,
     INIT_EPOLL,
-    EPOLL,
+    EPOLL
 };
 
 class  Server
@@ -99,4 +99,5 @@ class  Server
         void                                                deleteFromTimeContainer(int);
         void                                                ServerLogger(std::string,Logger::Level, bool);
 };
+
 #endif
