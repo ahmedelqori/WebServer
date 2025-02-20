@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/19 02:48:01 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 17:17:49 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,7 @@ class RequestHandler
 private:
     map<int, ChunkedUploadState> chunked_uploads;
     map<int, ResponseInfos> responses_info;
+    vector<string> lastLocations;
 
 public:
     RequestHandler();
@@ -102,8 +103,9 @@ public:
     string reqBuffer;
     bool validCRLF;
     ConfigParser server_config;
-
-
+    
+    bool getFinalUrl(string& url);
+    bool alreadyExist(string url);
     ResponseInfos serverRootOrRedirect(RessourceInfo ressource);
     ServerConfig getServer(ConfigParser configParser, std::string host);
     bool hasErrorPage(int code);
