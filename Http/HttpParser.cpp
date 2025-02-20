@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/17 19:56:33 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 12:01:28 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 HttpParser::HttpParser() : state(REQUEST_LINE) {}
 
-Request HttpParser::parse(const string &data)
+Request HttpParser::parse(const string &data,string host)
 {
     string line;
     bool hasCRLF = false;
@@ -31,7 +31,7 @@ Request HttpParser::parse(const string &data)
                     throw BAD_REQUEST;
                 if (!line.empty())
                 {
-                    processLine(line);
+                    processLine(line,host);
                     line.clear();
                 }
                 else if (state == HEADER)
@@ -50,7 +50,7 @@ Request HttpParser::parse(const string &data)
     if (!hasCRLF && state == HEADER)
         throw BAD_REQUEST;
     if (!line.empty())
-        processLine(line);
+        processLine(line,host);
 
     validateHeaders();
 
@@ -65,12 +65,12 @@ Request HttpParser::parse(const string &data)
     return request;
 }
 
-void HttpParser::processLine(const string &line)
+void HttpParser::processLine(const string &line,string host)
 {
     switch (state)
     {
     case REQUEST_LINE:
-        parseRequestLine(line);
+        parseRequestLine(line,host);
         break;
     case HEADER:
         parseHeader(line);
@@ -86,7 +86,7 @@ bool HttpParser::isChunkedData()
     return (headers.count(TRANSFER_ENCODING) > 0 && headers[TRANSFER_ENCODING] == CHUNKED);
 }
 
-void HttpParser::parseRequestLine(const string &line)
+void HttpParser::parseRequestLine(const string &line,string host)
 {
     stringstream ss(line);
     string last;
@@ -94,13 +94,14 @@ void HttpParser::parseRequestLine(const string &line)
 
     if (method.empty() || uri.empty() || version.empty() || !last.empty())
     {
-        std::cerr << "Invalid request line: " << line << std::endl;
         throw BAD_REQUEST;
     }
     if (version != HTTP_VERSION)
     {
         throw VERSION_NOT_SUPPORTED;
     }
+    parseHttpUrl(uri,host);
+
     validateMethod(method);
     uri = validatePath(uri);
 
@@ -113,6 +114,31 @@ void HttpParser::parseRequestLine(const string &line)
         uri = path;
     }
     state = HEADER;
+}
+
+void HttpParser::parseHttpUrl(string &url,string& host)
+{
+
+     string ipWithPort, path;
+        
+        size_t pos = url.find("://");
+        if (pos != string::npos) {
+            pos += 3; 
+        } else {
+            pos = 0; 
+        }
+
+        size_t pathPos = url.find("/", pos);
+        if (pathPos != string::npos) {
+            ipWithPort = url.substr(pos, pathPos - pos); 
+            path = url.substr(pathPos); 
+        } else {
+            ipWithPort = url.substr(pos); 
+            path = "/"; 
+        }
+        url = path;
+        if (host != ipWithPort)
+            throw BAD_REQUEST;
 }
 
 static void lowerString(string &str)

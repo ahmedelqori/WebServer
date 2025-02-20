@@ -10,6 +10,7 @@ private:
     std::string path;
     std::string decoded_path;
     std::string version;
+    std::string host;
     std::map<std::string, std::string> headers;
     std::string body;
     std::map<std::string, std::string> query_params;

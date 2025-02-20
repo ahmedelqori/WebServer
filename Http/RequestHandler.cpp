@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/19 04:03:47 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 11:57:50 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -149,7 +149,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     {
         if (isNewClient(client_sockfd))
         {
-            //cout << "New client connected " << endl;
             reqBuffer += req;
             if (!validCRLF)
             {
@@ -160,7 +159,12 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             }
 
             HttpParser parser;
-            request = parser.parse(reqBuffer);
+            ServerConfig config = getServer(server_config,HOST);
+
+            stringstream ss;
+            ss << config.getHost() << ":" << config.getPort();
+        
+            request = parser.parse(reqBuffer,ss.str());
 
             reqBuffer.clear();
             if (isChunkedRequest(request))
@@ -242,7 +246,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     catch (int code)
     {
 
-        //cout << "exited with code " << code  << endl;
         map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
         if (it != chunked_uploads.end())
         {
@@ -258,9 +261,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code), code);
         else
         {
-               //cout << "Wlcome " << code  << endl;
             responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(code),code);
+                ServerUtils::generateErrorPage(code), code);
         }
 
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
@@ -349,7 +351,6 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
 ResponseInfos RequestHandler::handleGet(const Request &request)
 {
 
-    //cout << "GET :" << request.getDecodedPath() << endl;
     string url = request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
@@ -551,6 +552,7 @@ ServerConfig RequestHandler::getServer(ConfigParser configParser, std::string ho
         stringstream server(currentServers[i].getHost(), ios_base::app | ios_base::out);
         server << ':';
         server << currentServers[i].getPort();
+
         if (!host.empty() && server.str() == host)
             return currentServers[i];
         i++;
