@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 12:01:28 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 12:59:47 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -137,7 +137,7 @@ void HttpParser::parseHttpUrl(string &url,string& host)
             path = "/"; 
         }
         url = path;
-        if (host != ipWithPort)
+        if (!ipWithPort.empty() &&  host != ipWithPort)
             throw BAD_REQUEST;
 }
 
