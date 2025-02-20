@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerUtils.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 11:18:20 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/20 19:24:29 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,10 +32,9 @@ File_Type ServerUtils::checkResource(const std::string &fullPath)
 
 static std::size_t getFileSize(const std::string &filePath)
 {
-    std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary); // Open the file in binary mode
+    std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
     if (!file)
     {
-        std::cerr << "Error: Could not open file " << filePath << std::endl;
         return 0;
     }
     file.seekg(0, std::ios::end);

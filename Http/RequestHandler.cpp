@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 14:50:52 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 19:18:19 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,6 +147,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 {
     try
     {
+
         if (isNewClient(client_sockfd))
         {
             reqBuffer += req;
@@ -171,29 +172,30 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             {
                 if (request.hasHeader(CONTENT_LENGTH))
                     throw BAD_REQUEST;
+                string url = request.getDecodedPath();
+                if (!getFinalUrl(url))
+                {
+                    throw NOT_FOUND;
+                }
 
                 LocationConfig location;
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
 
-                    if (!location.getRedirectionPath().empty())
-                    
-                        request.setDecodedPath(location.getRedirectionPath());
-                    else
-                    {
-                        ChunkedUploadState state;
-                        state.headers_parsed = true;
-                        state.content_remaining = 0;
+                    ChunkedUploadState state;
+                    state.headers_parsed = true;
+                    state.content_remaining = 0;
 
-                        state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
-                                            ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
-                        state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+                    state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
+                                        ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
+                    state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
-                        if (!state.output_file.is_open())
-                            throw NOT_FOUND;
-                        chunked_uploads[client_sockfd] = state;
-                        processChunkedData(client_sockfd, request.getBody(), epoll_fd);
-                    }
+                    if (!state.output_file.is_open())
+                        throw NOT_FOUND;
+                    chunked_uploads[client_sockfd] = state;
+                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
+                        throw NOT_ALLOWED;
+                    processChunkedData(client_sockfd, request.getBody(), epoll_fd);
                 }
             }
             else if (isPostMethod(request))
@@ -202,68 +204,41 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
                 string url = request.getDecodedPath();
 
+                if (!getFinalUrl(url))
+                {
+                    throw NOT_FOUND;
+                }
+
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
-                    if (!location.getRedirectionPath().empty())
+
+                    if (is_CgiRequest(url, location.getCgiExtension()))
                     {
-                        request.setDecodedPath(location.getRedirectionPath());
-                        if (this->matchLocation(location, request.getDecodedPath(), request))
-                        {
-                            if (is_CgiRequest(url, location.getCgiExtension()))
-                            {
-                                CGI cgi;
+                        CGI cgi;
 
-                                ResponseInfos response;
-                                response = cgi.execute(request, url, location.getCgiExtension(), location.getRoot());
+                        ResponseInfos response;
+                        response = cgi.execute(request, url, location.getCgiExtension(), location.getRoot());
 
-                                responses_info[client_sockfd] = response;
+                        responses_info[client_sockfd] = response;
 
-                                modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-                                return;
-                            }
-                            ChunkedUploadState state;
-                            state.headers_parsed = true;
-                            state.content_remaining = 0;
-                            state.total_size = 0;
-
-                            state.upload_path = location.getRoot() + request.getDecodedPath() + "/" + ServerUtils::generateUniqueString() +
-                                                ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
-                            state.output_file.open(state.upload_path.c_str(), std::ios::binary);
-
-                            if (!state.output_file.is_open())
-                                throw NOT_FOUND;
-                            chunked_uploads[client_sockfd] = state;
-                            processPostData(client_sockfd, request.getBody(), epoll_fd);
-                        }
+                        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+                        return;
                     }
-                    else
-                    {
-                        if (is_CgiRequest(url, location.getCgiExtension()))
-                        {
-                            CGI cgi;
+                    ChunkedUploadState state;
+                    state.headers_parsed = true;
+                    state.content_remaining = 0;
+                    state.total_size = 0;
 
-                            ResponseInfos response;
-                            response = cgi.execute(request, url, location.getCgiExtension(), location.getRoot());
+                    state.upload_path = location.getRoot() + request.getDecodedPath() + "/" + ServerUtils::generateUniqueString() +
+                                        ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
+                    state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
-                            responses_info[client_sockfd] = response;
-
-                            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-                            return;
-                        }
-                        ChunkedUploadState state;
-                        state.headers_parsed = true;
-                        state.content_remaining = 0;
-                        state.total_size = 0;
-
-                        state.upload_path = location.getRoot() + request.getDecodedPath() + "/" + ServerUtils::generateUniqueString() +
-                                            ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
-                        state.output_file.open(state.upload_path.c_str(), std::ios::binary);
-
-                        if (!state.output_file.is_open())
-                            throw NOT_FOUND;
-                        chunked_uploads[client_sockfd] = state;
-                        processPostData(client_sockfd, request.getBody(), epoll_fd);
-                    }
+                    if (!state.output_file.is_open())
+                        throw NOT_FOUND;
+                    chunked_uploads[client_sockfd] = state;
+                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
+                        throw NOT_ALLOWED;
+                    processPostData(client_sockfd, request.getBody(), epoll_fd);
                 }
             }
             else
@@ -287,7 +262,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
     catch (int code)
     {
-
         map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
         if (it != chunked_uploads.end())
         {
@@ -300,14 +274,17 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         }
 
         if (hasErrorPage(code))
+        {
             responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code), code);
+            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+        }
         else
         {
+
             responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
                 ServerUtils::generateErrorPage(code), code);
+            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
         }
-
-        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
     catch (exception &e)
     {
@@ -316,6 +293,48 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             INTERNAL_SERVER_ERROR);
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
+}
+
+bool RequestHandler::alreadyExist(string url)
+{
+    size_t i = 0;
+
+    while (i < lastLocations.size())
+    {
+        if (lastLocations[i] == url)
+            return true;
+        i++;
+    }
+    return false;
+}
+
+bool RequestHandler::getFinalUrl(string &url)
+{
+
+    LocationConfig loc;
+    if (this->matchLocation(loc, url, request))
+    {
+        if (lastLocations.size() > 0)
+        {
+            if (alreadyExist(url))
+            {
+                lastLocations.clear();
+                return false;
+            }
+        }
+        lastLocations.push_back(url);
+        if (!loc.getRedirectionPath().empty())
+        {
+            request.setDecodedPath(loc.getRedirectionPath());
+            url = request.getDecodedPath();
+            getFinalUrl(url);
+        }
+        lastLocations.clear();
+        return true;
+    }
+    if (lastLocations.size() > 0)
+        lastLocations.clear();
+    return false;
 }
 string RequestHandler::getErrorPage(int code)
 {
@@ -736,6 +755,7 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
 {
 
     checkMaxBodySize();
+
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
     string contentLenghtStr;
@@ -762,8 +782,8 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     {
         const char *post_data = state.partial_request.data();
         state.output_file.write(post_data, state.partial_request.length());
+        
         state.total_size += state.partial_request.length();
-        // cout << "total size " << state.total_size << endl;
 
         if (state.total_size >= contentLenght)
         {
