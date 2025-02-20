@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 11:49:00 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 12:01:28 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,7 +94,6 @@ void HttpParser::parseRequestLine(const string &line,string host)
 
     if (method.empty() || uri.empty() || version.empty() || !last.empty())
     {
-        std::cerr << "Invalid request line: " << line << std::endl;
         throw BAD_REQUEST;
     }
     if (version != HTTP_VERSION)
@@ -102,8 +101,6 @@ void HttpParser::parseRequestLine(const string &line,string host)
         throw VERSION_NOT_SUPPORTED;
     }
     parseHttpUrl(uri,host);
-
-    cout << "Server Host: " <<  host << endl;
 
     validateMethod(method);
     uri = validatePath(uri);
@@ -140,7 +137,8 @@ void HttpParser::parseHttpUrl(string &url,string& host)
             path = "/"; 
         }
         url = path;
-        host = ipWithPort;
+        if (host != ipWithPort)
+            throw BAD_REQUEST;
 }
 
 static void lowerString(string &str)

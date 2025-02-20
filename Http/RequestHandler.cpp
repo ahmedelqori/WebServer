@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 11:46:08 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 11:57:50 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,9 +160,11 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
             HttpParser parser;
             ServerConfig config = getServer(server_config,HOST);
-            string host = config.getHost();
-            host += config.getPort();
-            request = parser.parse(reqBuffer,host);
+
+            stringstream ss;
+            ss << config.getHost() << ":" << config.getPort();
+        
+            request = parser.parse(reqBuffer,ss.str());
 
             reqBuffer.clear();
             if (isChunkedRequest(request))
