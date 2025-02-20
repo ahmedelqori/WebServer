@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:30 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/01/19 21:27:31 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/20 19:24:10 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,5 @@ string Response::getResponse() const
         it++; 
     }
     ss << "\r\n";
-    //    << body;
-    // cout << "hh\r\n" << ss.str() << "hh" << endl;
     return ss.str();
 }

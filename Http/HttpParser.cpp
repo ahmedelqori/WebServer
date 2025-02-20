@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 12:59:47 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 19:24:43 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -158,7 +158,6 @@ void HttpParser::parseHeader(const string &line)
     size_t separator = line.find(':');
     if (separator == string::npos)
     {
-        std::cerr << "Invalid header: " << line << std::endl;
         throw BAD_REQUEST;
     }
 
@@ -294,7 +293,6 @@ std::string HttpParser::validatePath(const std::string &path)
     // Check for bad URI characters
     if (isBadUri(path))
     {
-        // std::cout << "Is bad uri " << std::endl;
         throw BAD_REQUEST;
     }
 

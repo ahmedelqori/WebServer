@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 17:21:31 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 19:18:19 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -172,6 +172,11 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             {
                 if (request.hasHeader(CONTENT_LENGTH))
                     throw BAD_REQUEST;
+                string url = request.getDecodedPath();
+                if (!getFinalUrl(url))
+                {
+                    throw NOT_FOUND;
+                }
 
                 LocationConfig location;
                 if (this->matchLocation(location, request.getDecodedPath(), request))
@@ -201,11 +206,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 
                 if (!getFinalUrl(url))
                 {
-                    cout << "HERE " << endl;
                     throw NOT_FOUND;
                 }
-
-                cout << "FINAL URL IS: " << url << endl;
 
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
@@ -260,9 +262,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
     }
     catch (int code)
     {
-
-        cout << "exited with code " << code << endl;
-
         map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
         if (it != chunked_uploads.end())
         {
@@ -278,16 +277,13 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
         {
             responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code), code);
             modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-            return;
         }
         else
         {
 
-            cout << "Processing response ..." << endl;
             responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
                 ServerUtils::generateErrorPage(code), code);
             modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-            return;
         }
     }
     catch (exception &e)
@@ -302,7 +298,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
 bool RequestHandler::alreadyExist(string url)
 {
     size_t i = 0;
-    
+
     while (i < lastLocations.size())
     {
         if (lastLocations[i] == url)
@@ -322,7 +318,7 @@ bool RequestHandler::getFinalUrl(string &url)
         {
             if (alreadyExist(url))
             {
-                cout << "SIR KON THCHAM" << endl;
+                lastLocations.clear();
                 return false;
             }
         }
@@ -333,8 +329,11 @@ bool RequestHandler::getFinalUrl(string &url)
             url = request.getDecodedPath();
             getFinalUrl(url);
         }
+        lastLocations.clear();
         return true;
     }
+    if (lastLocations.size() > 0)
+        lastLocations.clear();
     return false;
 }
 string RequestHandler::getErrorPage(int code)
@@ -783,8 +782,8 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     {
         const char *post_data = state.partial_request.data();
         state.output_file.write(post_data, state.partial_request.length());
+        
         state.total_size += state.partial_request.length();
-        // cout << "total size " << state.total_size << endl;
 
         if (state.total_size >= contentLenght)
         {
