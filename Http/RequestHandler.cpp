@@ -398,7 +398,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
 
-    if (!ressource.indexFile.empty())
+    if (!ressource.indexFile.empty() && url.find_last_of("/") == url.length() - 1)
     {
 
         string indexPath;
