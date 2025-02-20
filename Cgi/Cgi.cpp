@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/19 21:14:08 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/20 14:53:19 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,7 +99,28 @@ string to_string1(int n)
 	return ss.str();
 }
 
-void CGI::setupEnvironment(const Request &req,string root,string cgi,string path)
+map<string ,string> splitQueryString(string query)
+{
+	map<string, string> result;
+	size_t pos = 0;
+	while (pos < query.size())
+	{
+		size_t end = query.find('&', pos);
+		if (end == string::npos)
+			end = query.size();
+		size_t equal = query.find('=', pos);
+		if (equal != string::npos)
+		{
+			string key = query.substr(pos, equal - pos);
+			string value = query.substr(equal + 1, end - equal - 1);
+			result[key] = value;
+		}
+		pos = end + 1;
+	}
+	return result;
+}
+
+void CGI::setupEnvironment(const Request &req, string root, string cgi, string path)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
 
@@ -131,6 +152,23 @@ void CGI::setupEnvironment(const Request &req,string root,string cgi,string path
 		}
 		queryString += it->first + "=" + it->second;
 	}
+	if (req.getMethod() == "POST")
+	{
+		queryString += req.getBody();
+		map<string, string> postParams = splitQueryString(req.getBody());
+		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it) {
+			env[it->first] = it->second;
+		}
+
+		//debug
+		
+		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it) {
+			cout << "POST PARAMS: " << it->first << " = " << it->second << endl;
+		}
+
+
+	}
+	cout << "Query string: " << queryString << endl;
 	env["QUERY_STRING"] = queryString;
 	env["SCRIPT_NAME"] = path;
 
@@ -172,6 +210,7 @@ void CGI::setupEnvironment(const Request &req,string root,string cgi,string path
 		}
 		env["HTTP_COOKIE"] = cookieStr;
 	}
+
 	// Debug output
 	// cout << "CGI Environment Variables:" << endl;
 	// for (const auto &pair : env)
@@ -189,19 +228,18 @@ string extentionExtractor(string path)
 	return path.substr(pos);
 }
 
-ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string> cgi_info, string root)
+ResponseInfos CGI::execute(const Request request, string &cgi, map<string, string> cgi_info, string root)
 {
 	ResponseInfos response;
-	
+
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
 	string path = cgi;
 	cout << "CGI Path: " << cgi << endl;
-	cgi = string(root) + string(cgi); 
+	cgi = string(root) + string(cgi);
 
-	cout << "HELOOOOOO "<< cgi << endl;
-
-	setupEnvironment(request,root ,cgi,path);
+	cout << "HELOOOOOO " << cgi << endl;
+	setupEnvironment(request, root, cgi, path);
 
 	if (pipe(inputPipe) == -1 || pipe(outputPipe) == -1 || pipe(stderrPipe) == -1)
 	{
@@ -215,18 +253,15 @@ ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string
 	{
 		if (dup2(inputPipe[0], STDIN_FILENO) == -1 || dup2(outputPipe[1], STDOUT_FILENO) == -1 || dup2(stderrPipe[1], STDERR_FILENO) == -1)
 			throw CGIException("Error: CGI: Dup2 failed");
-		
+
 		close(inputPipe[0]);
 		close(outputPipe[0]);
 		close(stderrPipe[0]);
-		
+
 		close(inputPipe[1]);
 		close(outputPipe[1]);
 		close(stderrPipe[1]);
 
-
-
-		
 		// if (!request.getBody().empty())
 		// {
 		// 	fwrite(request.getBody().c_str(), 1, request.getBody().size(), stdin);
@@ -264,14 +299,46 @@ ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string
 	else
 	{
 		close(inputPipe[0]);
+		if (request.getMethod() == "POST" && !request.getBody().empty())
+		{
+			const string &body = request.getBody();
+			cout << "Writing body to CGI script. Body size: " << body.size() << endl;
+			cout << "Body content: " << body << endl;
+
+			size_t totalWritten = 0;
+			const size_t bodySize = body.size();
+
+			while (totalWritten < bodySize)
+			{
+				ssize_t written = write(inputPipe[1],
+										body.c_str() + totalWritten,
+										bodySize - totalWritten);
+
+				cout << "Wrote " << written << " bytes" << endl;
+
+				if (written <= 0)
+				{
+					if (errno != EINTR)
+					{
+						cerr << "Write error: " << strerror(errno) << endl;
+						close(inputPipe[1]);
+						throw CGIException("Error writing request body to CGI script");
+					}
+					continue;
+				}
+				totalWritten += written;
+			}
+			cout << "Finished writing body. Total written: " << totalWritten << " bytes" << endl;
+		}
+
 		close(inputPipe[1]);
 		close(outputPipe[1]);
 		close(stderrPipe[1]);
-		
+
 		int status;
 
 		cout << "Parsing CGI output" << endl;
-	
+
 		try
 		{
 			string output = getResponse();
@@ -292,8 +359,8 @@ ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string
 			response.setStatus(INTERNAL_SERVER_ERROR);
 			response.setBody("CGI Processing Error");
 		}
-  		waitpid(childPid, &status, WNOHANG);
-		cout << "test"<< endl;
+		waitpid(childPid, &status, WNOHANG);
+		// cout << "test"<< endl;
 		if (WIFEXITED(status))
 		{
 			int exitStatus = WEXITSTATUS(status);
@@ -304,14 +371,17 @@ ResponseInfos CGI::execute(const Request request,string &cgi, map<string, string
 				response.setStatus(INTERNAL_SERVER_ERROR);
 				response.setStatusMessage(MSG_INTERNAL_SERVER_ERROR);
 				map<string, string> headers;
-				headers["Content-Type"] = "text/html";
-				response.setHeaders(headers);
 				response.setBody("CGI Processing Error");
+				headers["Content-Type"] = "text/html";
+				headers["Content-Length"] = to_string1(response.getBody().size());
+				response.setHeaders(headers);
 				return response;
 			}
 		}
 	}
 
+	cout << "CGI execution complete" << endl;
+	cout << response << endl;
 	return response;
 }
 
@@ -333,7 +403,7 @@ string CGI::getResponse()
 	// }
 
 	// cout << "Waiting for error process to finish" << endl;
-	
+
 	// response.append("\n");
 
 	while ((bytesRead = read(outputPipe[0], buffer, sizeof(buffer))) > 0)
@@ -364,7 +434,8 @@ ResponseInfos CGI::parseOutput(string output)
 		istringstream headerStream(headers);
 		string line;
 
-		while (getline(headerStream, line)) {
+		while (getline(headerStream, line))
+		{
 			if (!line.empty() && line[line.size() - 1] == '\r')
 				line.erase(line.size() - 1);
 			size_t colon = line.find(':');
@@ -383,7 +454,7 @@ ResponseInfos CGI::parseOutput(string output)
 	}
 	else
 		response.setBody(output);
-	
+
 	ofstream logFile("cgi.log", ios::app);
 	logFile << "CGI Response Status: " << response.getStatus() << endl;
 	logFile << "CGI Response Headers: " << endl;
