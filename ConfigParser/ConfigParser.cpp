@@ -3,18 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/18 21:06:56 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/20 11:18:25 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/ConfigParser.hpp"
 
-ServerConfig::ServerConfig():       locationIndex(0){};
-ConfigParser::ConfigParser():       current(0), index(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){};
-LocationConfig::LocationConfig()    {};
+ServerConfig::ServerConfig():       locationIndex(0){}
+ConfigParser::ConfigParser():       current(0), index(0), currentServerState(HTTP),currentErrorPages(ERROR),currentLocationState(PATH){}
+LocationConfig::LocationConfig()    {}
 
 
 LocationConfig::LocationConfig(const LocationConfig &L)
@@ -225,7 +225,7 @@ void    ConfigParser::handleClientMaxBodySizeState()
 {
     std::vector<std::string> clientMaxBodySize;
     std::vector<std::string> Array;
-    unsigned long long       res;
+    size_t                   res;
     std::string              tmp;
 
     clientMaxBodySize = splitString(this->fileContent[this->index++], WHITE_SPACES);
@@ -233,7 +233,7 @@ void    ConfigParser::handleClientMaxBodySizeState()
         Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
     if (is_valid_size(clientMaxBodySize[1], INDEX) == false) Error(4, ERR_SYNTAX, W_CLIENT_MAX_BODY_SIZE, W_SERVER, itoa(this->current).c_str());
     (tmp = clientMaxBodySize[1][clientMaxBodySize[1].size() - 1], clientMaxBodySize[1][clientMaxBodySize[1].size() - 1] = ',', clientMaxBodySize[1] += tmp);
-    (Array = splitString(clientMaxBodySize[1], ","), res = (unsigned long long)atoi(Array[0].c_str()) * parse_size(Array[1]));
+    (Array = splitString(clientMaxBodySize[1], ","), res = (size_t)atoi(Array[0].c_str()) * parse_size(Array[1]));
     this->servers[this->current].setClientMaxBodySize(res);
     this->currentServerState = LOCATIONS; 
 }
@@ -373,28 +373,28 @@ void   ConfigParser::handleCgiExtension()
 
 
 int                                 ServerConfig::getPort() const                                       {    return this->port;}
-std::vector<int>                    ServerConfig::getPorts() const                                      {    return this->ports;};
+size_t                              ServerConfig::getClientMaxBodySize() const                          {    return this->clientMaxBodySize; }
 std::string                         ServerConfig::getHost() const                                       {    return this->host;}
+std::vector<int>                    ServerConfig::getPorts() const                                      {    return this->ports;}
+std::vector<std::string>            ServerConfig::getServerNames() const                                {    return this->serverNames;}
 std::vector<LocationConfig>         &ServerConfig::getLocations()                                       {    return this->locations;}
 std::map<std::string, std::string>  ServerConfig::getErrorPages() const                                 {    return this->errorPages;}
-std::vector<std::string>            ServerConfig::getServerNames() const                                {    return this->serverNames;}
-unsigned long long                  ServerConfig::getClientMaxBodySize() const                          {    return this->clientMaxBodySize; }
             
-std::string                         LocationConfig::getPath() const                                     {    return this->path;}
-std::string                         LocationConfig::getRoot() const                                     {    return this->root;}
-std::vector<std::string>            LocationConfig::getMethods() const                                  {    return this->methods;}
-std::string                         LocationConfig::getIndexFile() const                                {    return this->indexFile;}
-std::string                         LocationConfig::getRedirectionPath() const                          {    return this->redirectionPath;}
 int                                 LocationConfig::getRedirectionCode() const                          {    return this->redirectionCode;}
 bool                                LocationConfig::getDirectoryListing() const                         {    return this->directoryListing;}
-std::map<std::string, std::string>  LocationConfig::getCgiExtension() const                             {    return this->cgiExtension;};
+std::string                         LocationConfig::getPath() const                                     {    return this->path;}
+std::string                         LocationConfig::getRoot() const                                     {    return this->root;}
+std::string                         LocationConfig::getIndexFile() const                                {    return this->indexFile;}
+std::string                         LocationConfig::getRedirectionPath() const                          {    return this->redirectionPath;}
+std::vector<std::string>            LocationConfig::getMethods() const                                  {    return this->methods;}
+std::map<std::string, std::string>  LocationConfig::getCgiExtension() const                             {    return this->cgiExtension;}
 
 
 void                                ServerConfig::setPort(int port)                                     {    this->port = port;}
 void                                ServerConfig::setPorts(int port)                                    {    this->ports.push_back(port);}
 void                                ServerConfig::setHost(std::string &host)                            {    this->host = host;}
 void                                ServerConfig::setLocations(LocationConfig location)                 {    this->locations.push_back(location);}
-void                                ServerConfig::setClientMaxBodySize(unsigned long long size)               {    this->clientMaxBodySize = size;}
+void                                ServerConfig::setClientMaxBodySize(size_t size)                     {    this->clientMaxBodySize = size;}
 void                                ServerConfig::setServerNames(std::string &server_name)              {    this->serverNames.push_back(server_name);}
 void                                ServerConfig::setErrorPages(std::string &key, std::string &value)   {    this->errorPages.insert(std::make_pair(key, value));}
 

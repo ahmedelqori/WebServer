@@ -99,9 +99,9 @@ class ServerConfig
 {
     private:
         int                                     port;
+        size_t                                  clientMaxBodySize;
         std::string                             host;
         std::vector<int>                        ports;
-        unsigned long long                      clientMaxBodySize;
         std::vector<std::string>                serverNames;
         std::vector<LocationConfig>             locations;
         std::map<std::string, std::string>      errorPages;
@@ -110,9 +110,9 @@ class ServerConfig
 
         int                                     locationIndex;
         int                                     getPort() const;
+        size_t                                  getClientMaxBodySize() const;
         std::string                             getHost() const;
         std::vector<int>                        getPorts() const;
-        unsigned long long                      getClientMaxBodySize() const;
         std::vector<std::string>                getServerNames() const;
         std::vector<LocationConfig>             &getLocations();
         std::map<std::string, std::string>      getErrorPages() const;
@@ -120,7 +120,7 @@ class ServerConfig
         void                                    setPort(int port);
         void                                    setPorts(int port);
         void                                    setHost(std::string &host);
-        void                                    setClientMaxBodySize(unsigned long long size);
+        void                                    setClientMaxBodySize(size_t);
         void                                    setServerNames(std::string &server_name);
         void                                    setLocations(LocationConfig location);
         void                                    setErrorPages(std::string &key, std::string &value);

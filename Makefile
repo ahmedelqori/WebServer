@@ -1,7 +1,7 @@
 
 NAME = webserv
 CXX = c++
-CXXFLAGS = -g -fsanitize=address   -Wall -Wextra  -std=c++98 #-Werror
+CXXFLAGS = -g    -Wall -Wextra --pedantic -std=c++98 #-Werror
 RM = rm -rf
 
 SRC = main.cpp ./ConfigParser/ConfigParser.cpp ./ConfigParser/UtilsParser.cpp ./Server/Server.cpp \
