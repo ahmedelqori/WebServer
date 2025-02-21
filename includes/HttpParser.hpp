@@ -11,18 +11,18 @@
 class HttpParser {
 public:
     HttpParser();
-    Request parse(const string& data,string host);
+    Request parse(const string& data);
     string getMethod() const;
     string getUri() const;
     string getVersion() const;
     map<string, string> getHeaders() const;
-     void parseHttpUrl(string& url,string& host);
+     void parseHttpUrl(string& url);
     string getBody() const;
 private:
-    void parseRequestLine(const string& line,string host);
+    void parseRequestLine(const string& line);
     void parseHeader(const string& line);
     void parseBody(const string& body);
-    void processLine(const string& line,string host);
+    void processLine(const string& line);
     void validateHeaders();
     string validatePath(const string& path);
     void validateMethod(const string& method);

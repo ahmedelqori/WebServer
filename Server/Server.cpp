@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 15:05:30 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/21 16:00:45 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -157,8 +157,8 @@ void Server::processData(int index)
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
 
-    std::cout << "IndexServer: " << IndexServer[events[index].data.fd] << std::endl;
-    std::cout << "IndexPorts" << IndexPorts[IndexServer[events[index].data.fd]] << std::endl;
+    // std::cout << "IndexServer: " << IndexServer[events[index].data.fd] << std::endl;
+    // std::cout << "IndexPorts" << IndexPorts[IndexServer[events[index].data.fd]] << std::endl;
         if (bytesReceived <= 0)
     {
         (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
@@ -166,7 +166,7 @@ void Server::processData(int index)
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD);
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD, configFile.servers[IndexPorts[IndexServer[events[index].data.fd]]] );
 }
 
 void Server::acceptAndAnswer(int index)
@@ -213,7 +213,7 @@ void Server::init()
     this->hints.ai_family = AF_INET;
     this->hints.ai_flags = AI_PASSIVE;
     this->hints.ai_socktype = SOCK_STREAM;
-    this->requestHandler.server_config = this->configFile;  
+    // this->requestHandler.server_config = this->configFile;  
     currentStateServer = ADDR; 
 }
 

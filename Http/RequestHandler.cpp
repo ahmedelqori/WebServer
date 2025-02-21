@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 15:48:14 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/21 16:23:39 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,55 +37,43 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         return;
     }
     ResponseInfos &response_info = responses_info[current_fd];
-    cout <<  "Is CGIIIIIIIIIIIIIIIIIIIIIIIIi" << current_fd <<  response_info.isCgi << endl;
     if (responses_info[current_fd].isCgi == true)
     {
 
-        cout << "CGI process is running" << endl;
         int status;
         pid_t ret = waitpid(response_info.cgiPid, &status, WNOHANG);
         time_t now = time(NULL);
 
         if (now - response_info.cgiStartTime >= CGI_TIMEOUT)
-            {
-                // Timeout reached; kill the CGI process.
-                kill(response_info.cgiPid, SIGKILL);
-                waitpid(response_info.cgiPid, &status, 0);
-                // Build an error response (e.g., 500 Internal Server Error)
-                ResponseInfos errorResponse;
-                errorResponse.setStatus(504);
-                errorResponse.setStatusMessage("CGI process timed out");
-                map<string, string> headers;
-                headers["Content-Type"] = "text/html";
-                errorResponse.setHeaders(headers);
-                errorResponse.setBody("CGI Processing Error: Timeout");
-                response_info.isCgi = false;
-                responses_info[current_fd] = errorResponse;
-                // return ;
-                // modifyEpollEvent(epoll_fd, current_fd, EPOLLOUT)
-                ;
+        {
+
+            kill(response_info.cgiPid, SIGKILL);
+            waitpid(response_info.cgiPid, &status, 0);
+            ResponseInfos errorResponse;
+            errorResponse.setStatus(504);
+            errorResponse.setStatusMessage("CGI process timed out");
+            map<string, string> headers;
+            headers["Content-Type"] = "text/html";
+            errorResponse.setHeaders(headers);
+            errorResponse.setBody("CGI Processing Error: Timeout");
+            response_info.isCgi = false;
+            responses_info[current_fd] = errorResponse;
         }
 
         if (ret == 0)
         {
-            cout << "CGI process is still running 2 22222 2 2 2 2" << endl;
-            // CGI process is still running. Check for timeout.
-            
-            // Otherwise, do nothing and return; the event loop will check again soon.
+
             return;
         }
+
         else if (ret > 0)
         {
 
-            cout << "CGI process has finished" << endl;
-            // CGI process has finished.
-            // Read and parse the output from the temporary file.
             CGI cgiInstance;
             string output = cgiInstance.getResponse(response_info.cgiOutputFile);
             ResponseInfos parsedResponse = cgiInstance.parseOutput(output);
             response_info = parsedResponse;
             response_info.isCgi = false;
-            // modifyEpollEvent(epoll_fd, current_fd, EPOLLOUT);
         }
     }
 
@@ -194,11 +182,11 @@ bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
 }
-void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
+void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd, ServerConfig config)
 {
+    server_config = config;
     try
     {
-
         if (isNewClient(client_sockfd))
         {
             reqBuffer += req;
@@ -211,12 +199,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             }
 
             HttpParser parser;
-            ServerConfig config = getServer(server_config, HOST);
 
-            stringstream ss;
-            ss << config.getHost() << ":" << config.getPort();
-
-            request = parser.parse(reqBuffer, ss.str());
+            request = parser.parse(reqBuffer);
 
             reqBuffer.clear();
             if (isChunkedRequest(request))
@@ -389,12 +373,12 @@ bool RequestHandler::getFinalUrl(string &url)
 }
 string RequestHandler::getErrorPage(int code)
 {
-    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = server_config.getErrorPages();
     return errors_pages[itoa(code)];
 }
 bool RequestHandler::hasErrorPage(int code)
 {
-    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = server_config.getErrorPages();
     string errorPagePath = errors_pages.find(itoa(code)) != errors_pages.end() ? errors_pages[itoa(code)] : ServerUtils::generateErrorPage(code);
     if (access(errorPagePath.c_str(), F_OK | R_OK) == 0)
         return true;
@@ -474,7 +458,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         ressource.redirect = "";
         ressource.path = f_path;
         ressource.cgi_infos = bestMatch.getCgiExtension();
-        ressource.errors_pages = getServer(server_config, HOST).getErrorPages();
+        ressource.errors_pages = server_config.getErrorPages();
         ressource.root = bestMatch.getRoot();
         ressource.url = url;
 
@@ -511,7 +495,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.redirect = bestMatch.getRedirectionPath();
     ressource.path = fullPath;
     ressource.cgi_infos = bestMatch.getCgiExtension();
-    ressource.errors_pages = getServer(server_config, HOST).getErrorPages();
+    ressource.errors_pages = server_config.getErrorPages();
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
 
@@ -538,12 +522,12 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             CGI cgi;
             ResponseInfos response;
             response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
-                cout << "----------------------------------" << endl;
-                cout << response << endl;
+            cout << "----------------------------------" << endl;
+            cout << response << endl;
 
-                cout << "IS CGI " <<response.isCgi << endl;
+            cout << "IS CGI " << response.isCgi << endl;
 
-                cout << "----------------------------------" << endl;
+            cout << "----------------------------------" << endl;
             return response;
         }
         catch (CGIException &e)
@@ -704,8 +688,8 @@ ServerConfig RequestHandler::getServer(ConfigParser configParser, std::string ho
 
 bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
 {
-
-    vector<LocationConfig> locs = getServer(server_config, request.getHeader("host")).getLocations();
+    (void)request;
+    vector<LocationConfig> locs = server_config.getLocations();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
@@ -730,7 +714,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 {
-    map<string, string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errorPagePaths = server_config.getErrorPages();
     string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
     switch (ServerUtils::checkResource(ressource.path))
@@ -749,7 +733,7 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 
 void RequestHandler::checkMaxBodySize()
 {
-    size_t maxBodySize = getServer(server_config, request.getHeader(HOST)).getClientMaxBodySize();
+    size_t maxBodySize = server_config.getClientMaxBodySize();
     string contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
 
     stringstream ss(contentLenghtStr);
