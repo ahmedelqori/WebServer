@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 19:24:43 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 15:51:27 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 HttpParser::HttpParser() : state(REQUEST_LINE) {}
 
-Request HttpParser::parse(const string &data,string host)
+Request HttpParser::parse(const string &data)
 {
     string line;
     bool hasCRLF = false;
@@ -31,7 +31,7 @@ Request HttpParser::parse(const string &data,string host)
                     throw BAD_REQUEST;
                 if (!line.empty())
                 {
-                    processLine(line,host);
+                    processLine(line);
                     line.clear();
                 }
                 else if (state == HEADER)
@@ -50,7 +50,7 @@ Request HttpParser::parse(const string &data,string host)
     if (!hasCRLF && state == HEADER)
         throw BAD_REQUEST;
     if (!line.empty())
-        processLine(line,host);
+        processLine(line);
 
     validateHeaders();
 
@@ -65,12 +65,12 @@ Request HttpParser::parse(const string &data,string host)
     return request;
 }
 
-void HttpParser::processLine(const string &line,string host)
+void HttpParser::processLine(const string &line)
 {
     switch (state)
     {
     case REQUEST_LINE:
-        parseRequestLine(line,host);
+        parseRequestLine(line);
         break;
     case HEADER:
         parseHeader(line);
@@ -86,7 +86,7 @@ bool HttpParser::isChunkedData()
     return (headers.count(TRANSFER_ENCODING) > 0 && headers[TRANSFER_ENCODING] == CHUNKED);
 }
 
-void HttpParser::parseRequestLine(const string &line,string host)
+void HttpParser::parseRequestLine(const string &line)
 {
     stringstream ss(line);
     string last;
@@ -100,7 +100,7 @@ void HttpParser::parseRequestLine(const string &line,string host)
     {
         throw VERSION_NOT_SUPPORTED;
     }
-    parseHttpUrl(uri,host);
+    parseHttpUrl(uri);
 
     validateMethod(method);
     uri = validatePath(uri);
@@ -116,7 +116,7 @@ void HttpParser::parseRequestLine(const string &line,string host)
     state = HEADER;
 }
 
-void HttpParser::parseHttpUrl(string &url,string& host)
+void HttpParser::parseHttpUrl(string &url)
 {
 
      string ipWithPort, path;
@@ -137,8 +137,6 @@ void HttpParser::parseHttpUrl(string &url,string& host)
             path = "/"; 
         }
         url = path;
-        if (!ipWithPort.empty() &&  host != ipWithPort)
-            throw BAD_REQUEST;
 }
 
 static void lowerString(string &str)

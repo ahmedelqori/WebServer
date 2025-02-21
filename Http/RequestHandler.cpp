@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 12:12:10 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 16:01:42 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,11 +143,11 @@ bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
 }
-void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
+void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd,ServerConfig config)
 {
+    server_config = config;
     try
     {
-
         if (isNewClient(client_sockfd))
         {
             reqBuffer += req;
@@ -160,12 +160,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd)
             }
 
             HttpParser parser;
-            ServerConfig config = getServer(server_config, HOST);
 
-            stringstream ss;
-            ss << config.getHost() << ":" << config.getPort();
-
-            request = parser.parse(reqBuffer, ss.str());
+            request = parser.parse(reqBuffer);
 
             reqBuffer.clear();
             if (isChunkedRequest(request))
@@ -338,12 +334,12 @@ bool RequestHandler::getFinalUrl(string &url)
 }
 string RequestHandler::getErrorPage(int code)
 {
-    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = server_config.getErrorPages();
     return errors_pages[itoa(code)];
 }
 bool RequestHandler::hasErrorPage(int code)
 {
-    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = server_config.getErrorPages();
     string errorPagePath = errors_pages.find(itoa(code)) != errors_pages.end() ? errors_pages[itoa(code)] : ServerUtils::generateErrorPage(code);
     if (access(errorPagePath.c_str(), F_OK | R_OK) == 0)
         return true;
@@ -423,7 +419,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         ressource.redirect = "";
         ressource.path = f_path;
         ressource.cgi_infos = bestMatch.getCgiExtension();
-        ressource.errors_pages = getServer(server_config, HOST).getErrorPages();
+        ressource.errors_pages = server_config.getErrorPages();
         ressource.root = bestMatch.getRoot();
         ressource.url = url;
 
@@ -456,7 +452,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.redirect = bestMatch.getRedirectionPath();
     ressource.path = fullPath;
     ressource.cgi_infos = bestMatch.getCgiExtension();
-    ressource.errors_pages = getServer(server_config, HOST).getErrorPages();
+    ressource.errors_pages = server_config.getErrorPages();
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
 
@@ -643,8 +639,8 @@ ServerConfig RequestHandler::getServer(ConfigParser configParser, std::string ho
 
 bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
 {
-
-    vector<LocationConfig> locs = getServer(server_config, request.getHeader("host")).getLocations();
+    (void)request;
+    vector<LocationConfig> locs = server_config.getLocations();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
@@ -669,7 +665,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 {
-    map<string, string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errorPagePaths = server_config.getErrorPages();
     string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
     switch (ServerUtils::checkResource(ressource.path))
@@ -688,7 +684,7 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 
 void RequestHandler::checkMaxBodySize()
 {
-    size_t maxBodySize = getServer(server_config, request.getHeader(HOST)).getClientMaxBodySize();
+    size_t maxBodySize = server_config.getClientMaxBodySize();
     string contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
 
     stringstream ss(contentLenghtStr);
