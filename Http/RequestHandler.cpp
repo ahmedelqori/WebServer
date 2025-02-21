@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 12:12:10 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 15:48:14 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,57 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         return;
     }
     ResponseInfos &response_info = responses_info[current_fd];
+    cout <<  "Is CGIIIIIIIIIIIIIIIIIIIIIIIIi" << current_fd <<  response_info.isCgi << endl;
+    if (responses_info[current_fd].isCgi == true)
+    {
+
+        cout << "CGI process is running" << endl;
+        int status;
+        pid_t ret = waitpid(response_info.cgiPid, &status, WNOHANG);
+        time_t now = time(NULL);
+
+        if (now - response_info.cgiStartTime >= CGI_TIMEOUT)
+            {
+                // Timeout reached; kill the CGI process.
+                kill(response_info.cgiPid, SIGKILL);
+                waitpid(response_info.cgiPid, &status, 0);
+                // Build an error response (e.g., 500 Internal Server Error)
+                ResponseInfos errorResponse;
+                errorResponse.setStatus(504);
+                errorResponse.setStatusMessage("CGI process timed out");
+                map<string, string> headers;
+                headers["Content-Type"] = "text/html";
+                errorResponse.setHeaders(headers);
+                errorResponse.setBody("CGI Processing Error: Timeout");
+                response_info.isCgi = false;
+                responses_info[current_fd] = errorResponse;
+                // return ;
+                // modifyEpollEvent(epoll_fd, current_fd, EPOLLOUT)
+                ;
+        }
+
+        if (ret == 0)
+        {
+            cout << "CGI process is still running 2 22222 2 2 2 2" << endl;
+            // CGI process is still running. Check for timeout.
+            
+            // Otherwise, do nothing and return; the event loop will check again soon.
+            return;
+        }
+        else if (ret > 0)
+        {
+
+            cout << "CGI process has finished" << endl;
+            // CGI process has finished.
+            // Read and parse the output from the temporary file.
+            CGI cgiInstance;
+            string output = cgiInstance.getResponse(response_info.cgiOutputFile);
+            ResponseInfos parsedResponse = cgiInstance.parseOutput(output);
+            response_info = parsedResponse;
+            response_info.isCgi = false;
+            // modifyEpollEvent(epoll_fd, current_fd, EPOLLOUT);
+        }
+    }
 
     if (!response_info.headers.empty())
     {
@@ -434,6 +485,10 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
                 CGI cgi;
                 ResponseInfos response;
                 response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+                cout << "----------------------------------" << endl;
+                cout << response << endl;
+
+                cout << "----------------------------------" << endl;
                 return response;
             }
             catch (CGIException &e)
@@ -483,6 +538,12 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             CGI cgi;
             ResponseInfos response;
             response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+                cout << "----------------------------------" << endl;
+                cout << response << endl;
+
+                cout << "IS CGI " <<response.isCgi << endl;
+
+                cout << "----------------------------------" << endl;
             return response;
         }
         catch (CGIException &e)
@@ -800,22 +861,4 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
         }
         state.partial_request.clear();
     }
-}
-
-ostream &operator<<(ostream &os, const Request &request)
-{
-    os << "------------- Method: ---------\n " << request.getMethod() << endl;
-    os << "------------- URI: ----------\n"
-       << request.getPath() << endl;
-    os << "------------- Version: ---------\n " << request.getVersion() << endl;
-    os << "------------- Headers: ----------\n"
-       << endl;
-    map<string, string>::const_iterator it;
-    for (it = request.getHeaders().begin(); it != request.getHeaders().end(); ++it)
-    {
-        os << it->first << ": " << it->second << endl;
-    }
-    os << "---------------Body:----------------\n"
-       << request.getBody() << endl;
-    return os;
 }
