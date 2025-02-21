@@ -97,8 +97,13 @@ struct ResponseInfos
     size_t bytes_sent;
     string filePath;
     string response;
+    bool isCgi;
+    int cgiPid;
+    time_t cgiStartTime;
+    string cgiOutputFile;
+    string cgiInputFile;
 
-    ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response("") {}
+    ResponseInfos() : status(OK), statusMessage(MSG_OK), body(""),bytes_written(0),response(""),isCgi(false) {}
     ResponseInfos(int s, const string &sm, const string &b) : status(s), statusMessage(sm), body(b) {}
     ResponseInfos &operator=(const ResponseInfos &r)
     {
@@ -110,6 +115,11 @@ struct ResponseInfos
             filePath = r.filePath;
             location = r.location;
             body = r.body;
+            isCgi = r.isCgi;
+            cgiPid = r.cgiPid;
+            cgiStartTime = r.cgiStartTime;
+            cgiOutputFile = r.cgiOutputFile;
+            cgiInputFile = r.cgiInputFile;
         }
         return *this;
     }
