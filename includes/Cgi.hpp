@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 11:26:31 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/20 11:53:41 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/21 15:41:50 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,8 @@ private:
 
 public:
 	int counter;
+	string inputFile;
+	string outputFile;
 	string normalOutput;
 	void handleChunkedTransfer();
 	void processUpload(const string &uploadPath);
@@ -61,7 +63,7 @@ public:
 	~CGI();
 
 	ResponseInfos execute(const Request request,  string &cgi, map<string , string> cgi_info,string root);
-	string getResponse();
+	string getResponse(string);
 	map<string, string> createHeader(string output);
 	int getOutputPipe() { return outputPipe[0]; }
 	int getInputPipe() { return inputPipe[1]; }

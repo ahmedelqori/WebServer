@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 16:01:42 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 16:23:39 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,45 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         return;
     }
     ResponseInfos &response_info = responses_info[current_fd];
+    if (responses_info[current_fd].isCgi == true)
+    {
+
+        int status;
+        pid_t ret = waitpid(response_info.cgiPid, &status, WNOHANG);
+        time_t now = time(NULL);
+
+        if (now - response_info.cgiStartTime >= CGI_TIMEOUT)
+        {
+
+            kill(response_info.cgiPid, SIGKILL);
+            waitpid(response_info.cgiPid, &status, 0);
+            ResponseInfos errorResponse;
+            errorResponse.setStatus(504);
+            errorResponse.setStatusMessage("CGI process timed out");
+            map<string, string> headers;
+            headers["Content-Type"] = "text/html";
+            errorResponse.setHeaders(headers);
+            errorResponse.setBody("CGI Processing Error: Timeout");
+            response_info.isCgi = false;
+            responses_info[current_fd] = errorResponse;
+        }
+
+        if (ret == 0)
+        {
+
+            return;
+        }
+
+        else if (ret > 0)
+        {
+
+            CGI cgiInstance;
+            string output = cgiInstance.getResponse(response_info.cgiOutputFile);
+            ResponseInfos parsedResponse = cgiInstance.parseOutput(output);
+            response_info = parsedResponse;
+            response_info.isCgi = false;
+        }
+    }
 
     if (!response_info.headers.empty())
     {
@@ -143,7 +182,7 @@ bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
 }
-void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd,ServerConfig config)
+void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd, ServerConfig config)
 {
     server_config = config;
     try
@@ -430,6 +469,10 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
                 CGI cgi;
                 ResponseInfos response;
                 response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+                cout << "----------------------------------" << endl;
+                cout << response << endl;
+
+                cout << "----------------------------------" << endl;
                 return response;
             }
             catch (CGIException &e)
@@ -479,6 +522,12 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             CGI cgi;
             ResponseInfos response;
             response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+            cout << "----------------------------------" << endl;
+            cout << response << endl;
+
+            cout << "IS CGI " << response.isCgi << endl;
+
+            cout << "----------------------------------" << endl;
             return response;
         }
         catch (CGIException &e)
@@ -796,22 +845,4 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
         }
         state.partial_request.clear();
     }
-}
-
-ostream &operator<<(ostream &os, const Request &request)
-{
-    os << "------------- Method: ---------\n " << request.getMethod() << endl;
-    os << "------------- URI: ----------\n"
-       << request.getPath() << endl;
-    os << "------------- Version: ---------\n " << request.getVersion() << endl;
-    os << "------------- Headers: ----------\n"
-       << endl;
-    map<string, string>::const_iterator it;
-    for (it = request.getHeaders().begin(); it != request.getHeaders().end(); ++it)
-    {
-        os << it->first << ": " << it->second << endl;
-    }
-    os << "---------------Body:----------------\n"
-       << request.getBody() << endl;
-    return os;
 }
