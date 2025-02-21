@@ -19,6 +19,7 @@ using namespace std;
 #define VERSION_NOT_SUPPORTED 505
 #define PAYLOAD_TOO_LARGE 413
 #define NO_CONTENT 204
+#define CGI_TIMEOUT1 504
 #define CRLF_CRLF "\r\n\r\n"
 
 #define NOT_FOUND_CODE "404"
