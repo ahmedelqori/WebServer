@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 16:00:45 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 18:44:35 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,7 +67,7 @@ void Server::createSockets()
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype | SOCK_NONBLOCK, this->res[index]->ai_protocol);
         if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
         if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEADDR");
-        // if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
@@ -156,10 +156,8 @@ void Server::processData(int index)
     
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
-
-    // std::cout << "IndexServer: " << IndexServer[events[index].data.fd] << std::endl;
-    // std::cout << "IndexPorts" << IndexPorts[IndexServer[events[index].data.fd]] << std::endl;
-        if (bytesReceived <= 0)
+    findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]]);
+    if (bytesReceived <= 0)
     {
         (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
         return;
@@ -291,10 +289,37 @@ void    Server::deleteFromTimeContainer(int fd)
     ClientStatus.erase(ClientStatus.begin() + i);
 }
 
-ServerConfig    Server::findCorrectServer(int fd)
+std::vector<ServerConfig>    Server::findCorrectServers(int fd)
 {
-    std::cout << IndexServer[fd] << std::endl;
+    std::string                 host;
+    std::vector<int>            ports;
+    size_t                      index;
+    std::vector<ServerConfig>   server;
+
+    index = INDEX;
+    host = this->configFile.servers[fd].getHost();
+    ports = this->configFile.servers[fd].getPorts();
+
+    while (++index < this->configFile.servers.size())
+    {
+        if (host != this->configFile.servers[index].getHost())
+            continue;
+        if (hasCommonElement(ports, this->configFile.servers[index].getPorts()) == false)
+            continue;
+        server.push_back(this->configFile.servers[index]);
+    }
+    return server;
 }
+
+bool    Server::hasCommonElement(std::vector<int>& v1, std::vector<int> v2) {
+    for (std::vector<int>::const_iterator it = v1.begin(); it != v1.end(); ++it) {
+        if (std::find(v2.begin(), v2.end(), *it) != v2.end()) {
+            return true;
+        }
+    }
+    return false; 
+}
+
 
 bool   ConnectionStatus::isTimedOut() const
 {

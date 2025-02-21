@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/17 16:56:06 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/21 18:13:47 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,7 @@ void                            Error(int count, ...);
 #define W_SERVER                    "server"
 #define W_HOST                      "host"
 #define W_PORT                      "port"
+#define W_EMPTY                     "Empty File"
 #define W_HOST_PORT                 "host_port"
 #define W_SERVER_NAMES              "server_names"
 #define W_ERRORS_PAGES              "errors_pages"
