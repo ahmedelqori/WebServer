@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/20 11:18:39 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/21 15:05:30 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@ Server::~Server()
 void Server::CreateAddrOfEachPort(int serverIndex)
 {
     static int  indexRes  = 0; 
+    static int  indexPort = 3;
     size_t      index     = INDEX;
 
     while (++index < this->configFile.servers[serverIndex].getPorts().size())
@@ -41,6 +42,8 @@ void Server::CreateAddrOfEachPort(int serverIndex)
                         &this->hints,
                         &this->res[indexRes++]) != 0)
             Error(2, "Error Server:: ", "in getaddre info");
+        IndexPorts.insert(pair<int, int>(indexPort, serverIndex));
+        indexPort++;
     }
 }
 
@@ -64,7 +67,7 @@ void Server::createSockets()
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype | SOCK_NONBLOCK, this->res[index]->ai_protocol);
         if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
         if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEADDR");
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
+        // if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
@@ -141,6 +144,7 @@ void Server::acceptConnection(int index)
         return;
     }
     ClientStatus.push_back(make_pair(acceptFD, ConnectionStatus()));
+    IndexServer[acceptFD] = events[index].data.fd;
     this->addClientToEpoll(acceptFD);
 }
 
@@ -153,7 +157,9 @@ void Server::processData(int index)
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
 
-    if (bytesReceived <= 0)
+    std::cout << "IndexServer: " << IndexServer[events[index].data.fd] << std::endl;
+    std::cout << "IndexPorts" << IndexPorts[IndexServer[events[index].data.fd]] << std::endl;
+        if (bytesReceived <= 0)
     {
         (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
         return;
@@ -285,6 +291,10 @@ void    Server::deleteFromTimeContainer(int fd)
     ClientStatus.erase(ClientStatus.begin() + i);
 }
 
+ServerConfig    Server::findCorrectServer(int fd)
+{
+    std::cout << IndexServer[fd] << std::endl;
+}
 
 bool   ConnectionStatus::isTimedOut() const
 {
