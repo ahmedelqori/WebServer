@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 19:24:29 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 12:11:02 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,7 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
     ResponseInfos infos;
     infos.body = redirectResponse.str();
     infos.headers["Location"] = redirectUrl;
+    cout  << "Redirect URL: " << redirectUrl << endl;
     infos.status = statusCode;
     infos.statusMessage = "Moved permanently";
     return infos;

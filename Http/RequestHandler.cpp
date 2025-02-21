@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/20 19:18:19 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/21 12:12:10 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -381,7 +381,7 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
 {
     if ((ressource.url[ressource.url.length() - 1] != '/' && ressource.url != "/") || !ressource.redirect.empty())
     {
-        string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect + "/" : ressource.url + "/");
+        string redirectUrl = (!ressource.redirect.empty() ? ressource.redirect : ressource.url + "/");
         return ServerUtils::handleRedirect(redirectUrl, REDIRECTED);
     }
     if (!ressource.indexFile.empty())
@@ -585,9 +585,16 @@ ResponseInfos RequestHandler::handleDelete(const Request &request)
 {
 
     LocationConfig bestMatch;
+    string url = request.getDecodedPath();
+    if (!getFinalUrl(url))
+        throw NOT_FOUND;
 
     if (matchLocation(bestMatch, request.getDecodedPath(), request))
     {
+        if (!ServerUtils::isMethodAllowed(request.getMethod(), bestMatch.getMethods()))
+            return ServerUtils::ressourceToResponse(
+                ServerUtils::generateErrorPage(NOT_ALLOWED),
+                NOT_ALLOWED);
         if (bestMatch.getPath() == "/")
             return ServerUtils::ressourceToResponse(
                 ServerUtils::generateErrorPage(FORBIDEN),
@@ -662,7 +669,6 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
 {
-
     map<string, string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
     string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
@@ -782,7 +788,7 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
     {
         const char *post_data = state.partial_request.data();
         state.output_file.write(post_data, state.partial_request.length());
-        
+
         state.total_size += state.partial_request.length();
 
         if (state.total_size >= contentLenght)
