@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/23 21:07:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:56:46 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,10 +36,8 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         cleanupConnection(epoll_fd, current_fd);
         return;
     }
-    // ResponseInfos &response_info = responses_info[current_fd];
     if (responses_info[current_fd].isCgi == true)
     {
-        cout << "HELLO " << endl;
         int status;
         pid_t ret = waitpid(responses_info[current_fd].cgiPid, &status, WNOHANG);
         time_t now = time(NULL);
@@ -437,6 +435,8 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
         struct stat indexStat;
         if (stat(indexPath.c_str(), &indexStat) == 0)
         {
+            if (indexPath[0] == '.' || indexPath[0] == '/')
+                throw NOT_FOUND;
             return ServerUtils::serveFile(indexPath, OK);
         }
     }
@@ -514,6 +514,8 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         struct stat indexStat;
         if (stat(indexPath.c_str(), &indexStat) == 0)
         {
+            if (ressource.indexFile[0] == '.' || ressource.indexFile[0] == '/')
+                throw NOT_FOUND;
             url = url + ressource.indexFile;
         }
     }
@@ -674,7 +676,6 @@ ServerConfig RequestHandler::getServer(vector<ServerConfig> servers, std::string
 bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
 {
 
-    cout << "IS FIRST TIME" << endl;
     (void)request;
     vector<LocationConfig> locs = getServer(server_config, request.getHeader(HOST)).getLocations();
     LocationConfig bestMatch;
@@ -691,7 +692,6 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             if (pathLength > bestMatchLength)
             {
                 char nextChar = url[pathLength];
-                cout << "next char: " << nextChar << endl;
                 if (url[pathLength - 1] == '/' || nextChar == '\0')
                 {
                     found = true;
@@ -702,7 +702,6 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
         }
     }
     loc = bestMatch;
-    cout << " Upload dir : " << loc.getUploadDir() << endl;
     return found;
 }
 
