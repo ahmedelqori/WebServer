@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 20:22:10 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:58:59 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ void                            Error(int count, ...);
 
 #define ERR_SYNTAX                  "Syntax Error:: "
 #define ERR_INPUT                   "InputError:: "
+#define ERR_CONF                    "Configfile Error:: "
 #define ERR_ARGS                    "Incorrect number of arguments. Expected 1 argument."
 #define ERR_FILE_NOT_EXIST          "File doesnt exist"
 #define ERR_MIS_PAR                 "Missing closing parenthesis Or parenthesis not in single line"
@@ -72,6 +73,8 @@ void                            Error(int count, ...);
 #define GET                         "GET"
 #define POST                        "POST"
 #define DELETE                      "DELETE"
+
+#define TIMEOUT_MESSAGE "HTTP/1.1 408 Request Timeout\r\n\r\n"
 
 #define ON                          "ON"
 #define OFF                         "OFF"
@@ -106,6 +109,7 @@ void                            Error(int count, ...);
 #define MEGA                        "M"
 #define GIGA                        "G"
 
+#define TIMEOUT                     45
 #define MAX_EVENTS                  1024
-
+#define BUFFER_SIZE_SERVER          8192
 #endif
