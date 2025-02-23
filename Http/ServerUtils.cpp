@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 12:11:02 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 18:57:05 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,9 @@ static std::size_t getFileSize(const std::string &filePath)
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
 
-    if (access(filePath.c_str(), F_OK | R_OK) != 0)
+    if (access(filePath.c_str(), F_OK ) != 0)
+        throw NOT_FOUND;
+    if (access(filePath.c_str(), R_OK ) != 0)
         throw FORBIDEN;
 
     ResponseInfos response;
