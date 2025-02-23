@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 20:37:55 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 18:09:55 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -188,13 +188,14 @@ bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
 }
-void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd, vector<ServerConfig> config)
+void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
     server_config = config;
     try
     {
         if (isNewClient(client_sockfd))
         {
+
             reqBuffer += req;
             if (!validCRLF)
             {
@@ -206,7 +207,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int epoll_fd, 
 
             HttpParser parser;
 
-            request = parser.parse(reqBuffer);
+            request = parser.parse(reqBuffer, bytes_received);
 
             reqBuffer.clear();
             if (isChunkedRequest(request))

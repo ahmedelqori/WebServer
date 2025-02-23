@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 18:59:06 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 15:32:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -163,7 +163,7 @@ void Server::processData(int index)
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]])
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]])
  );
 }
 
