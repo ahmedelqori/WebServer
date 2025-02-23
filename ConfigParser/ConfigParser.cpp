@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 18:18:19 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/23 20:34:50 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@ LocationConfig::LocationConfig(const LocationConfig &L)
     path = L.getPath();
     root = L.getRoot();
     methods = L.getMethods();
+    uploadDir = L.getUploadDir();
     indexFile = L.getIndexFile();
     cgiExtension = L.getCgiExtension();
     redirectionPath = L.getRedirectionPath();
@@ -34,6 +35,7 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &L)
     path = L.getPath();
     root = L.getRoot();
     methods = L.getMethods();
+    uploadDir = L.getUploadDir();
     indexFile = L.getIndexFile();
     cgiExtension = L.getCgiExtension();
     redirectionPath = L.getRedirectionPath();
@@ -251,6 +253,7 @@ void    ConfigParser::parseLocations()
             case REDIRECTION    :       this->handleRedirectionState()      ;       break;
             case AUTO_INDEX     :       this->handleDirectoryListingState() ;       break;
             case INDEX_FILE     :       this->handleIndexFileState()        ;       break;
+            case UPLOAD_DIR     :       this->handleUploadDir()             ;       break;
             case CGI_EXT        :       this->handleCgiExtension()          ;       break;
             default             :                                                   break;
         }
@@ -355,9 +358,22 @@ void    ConfigParser::handleIndexFileState()
 
     if (!this->servers[this->current].getLocations()[index].getIndexFile().empty()) Error(3,ERR_SYNTAX, ERR_DUPLICATED, W_INDEX);
     Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
-    if (Array[0] != W_INDEX) {(this->currentLocationState = CGI_EXT, this->index--); return ;};
+    if (Array[0] != W_INDEX) {(this->currentLocationState = UPLOAD_DIR, this->index--); return ;};
     if (Array.size() != 2 || Array[0] != W_INDEX) Error(2, ERR_SYNTAX, W_INDEX);
     this->servers[this->current].getLocations()[index].setIndexFile(Array[1]);
+    this->currentLocationState = UPLOAD_DIR;
+}
+
+void   ConfigParser::handleUploadDir()
+{
+    int                         index  = this->servers[this->current].locationIndex;
+    std::vector<std::string>    Array;
+
+    if (!this->servers[this->current].getLocations()[index].getUploadDir().empty()) Error(3,ERR_SYNTAX, ERR_DUPLICATED, W_UPLOAD);
+    Array = splitString(this->fileContent[this->index++], WHITE_SPACES);
+    if (Array[0] != W_UPLOAD) {(this->currentLocationState = CGI_EXT, this->index--); return ;};
+    if (Array.size() != 2 || Array[0] != W_UPLOAD) Error(2, ERR_SYNTAX, W_UPLOAD);
+    this->servers[this->current].getLocations()[index].setUploadDir(Array[1]);
     this->currentLocationState = CGI_EXT;
 }
 
@@ -387,6 +403,7 @@ std::string                         LocationConfig::getPath() const             
 std::string                         LocationConfig::getRoot() const                                     {    return this->root;}
 std::string                         LocationConfig::getIndexFile() const                                {    return this->indexFile;}
 std::string                         LocationConfig::getRedirectionPath() const                          {    return this->redirectionPath;}
+std::string                         LocationConfig::getUploadDir() const                                {    return this->uploadDir;}
 std::vector<std::string>            LocationConfig::getMethods() const                                  {    return this->methods;}
 std::map<std::string, std::string>  LocationConfig::getCgiExtension() const                             {    return this->cgiExtension;}
 
@@ -405,5 +422,6 @@ void                                LocationConfig::setMethods(std::string key) 
 void                                LocationConfig::setDirectoryListing(bool b)                         {    this->directoryListing = b;}
 void                                LocationConfig::setIndexFile(std::string index)                     {    this->indexFile = index;}
 void                                LocationConfig::setRedirectionCode(int statusCode)                  {    this->redirectionCode = statusCode;}
+void                                LocationConfig::setUploadDir(std::string directory)                 {    this->uploadDir = directory;}
 void                                LocationConfig::setRedirectionPath(std::string path)                {    this->redirectionPath = path;}
 void                                LocationConfig::setCgiExtension(std::string ext, std::string path)  {    this->cgiExtension.insert(std::make_pair(ext, path));}
