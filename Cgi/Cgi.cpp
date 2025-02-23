@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/21 16:14:36 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/23 18:41:50 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -187,6 +187,8 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 string generateRandomName()
 {
 	string name = "tmp_";
+	time_t t;
+	srand((unsigned)time(&t));
 	for (int i = 0; i < 10; i++)
 	{
 		name += 'a' + rand() % 26;
@@ -201,13 +203,27 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
 	string path = cgi;
-	int child;
 	int pid;
 	cgi = string(root) + string(cgi);
 	setupEnvironment(request, root, cgi, path);
 	
-	outputFile = "output" + generateRandomName();
-	inputFile = generateRandomName();
+	outputFile = "/tmp/output" + generateRandomName();
+	inputFile = "/tmp/" + generateRandomName();
+
+	    // Open input file before forking to ensure it exists
+    fstream input(inputFile.c_str(), ios::out | ios::binary | ios::trunc);
+    if (!input.is_open())
+    {
+        cerr << "Error: Unable to open file for CGI input: " << inputFile << endl;
+        throw CGIException("Error: CGI: Unable to open file for writing CGI input");
+    }
+
+    if (request.getMethod() == "POST" && !request.getBody().empty())
+    {
+        input << request.getBody();
+        input.flush(); // Ensure data is fully written before exec
+    }
+    input.close();
 	
 	if ((pid = fork()) == -1)	throw CGIException("Error: CGI: Fork failed");
 	if (!pid)
@@ -246,6 +262,18 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	}
 	else
 	{
+		// if (request.getMethod() == "POST" && !request.getBody().empty())
+		// {
+		// 	cout << "Writing POST body to CGI input file" << endl;
+		// 	fstream input(inputFile.c_str(), ios::out | ios::binary);
+		// 	if (!input.is_open())
+		// 	{
+		// 		cerr << "Error: Unable to open file for writing CGI input: " << inputFile << endl;
+		// 		throw CGIException("Error: CGI: Unable to open file for writing CGI input");
+		// 	}
+		// 	input << request.getBody();
+		// 	input.close();
+		// }
     	response.isCgi = 1;                 
     	response.cgiPid = pid;               
     	response.cgiStartTime = time(NULL);  
@@ -269,8 +297,8 @@ string CGI::getResponse(string output)
     if (!inFile.is_open())
     {
         cerr << "Error: Unable to open file for reading CGI response: " << outputFile << endl;
-        if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0 )
-            cerr << "Error removing output file: " << strerror(errno) << endl;
+		if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0)
+        	cerr << "Error removing inoutput file: " << strerror(errno) << endl;
         return response;
     }
 
@@ -279,8 +307,7 @@ string CGI::getResponse(string output)
     }
 
     inFile.close();
-    if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0)
-        cerr << "Error removing output file: " << strerror(errno) << endl;
+ 
 
     return response;
 }
@@ -291,11 +318,11 @@ ResponseInfos CGI::parseOutput(string output)
 	cout << "response string : " << output << endl;
 	size_t headerEnd = output.find("\r\n\r\n");
 
-	if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
-	{
-		response.setStatus(FORBIDEN);
-		response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
-	}
+	// if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
+	// {
+	// 	response.setStatus(FORBIDEN);
+	// 	response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
+	// }
 	if (headerEnd == string::npos)
 		headerEnd = output.find("\n\n");
 	if (headerEnd != string::npos)

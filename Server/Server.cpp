@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 16:00:45 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 16:16:33 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,7 +67,7 @@ void Server::createSockets()
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype | SOCK_NONBLOCK, this->res[index]->ai_protocol);
         if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
         if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEADDR");
-        // if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
