@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/23 19:09:58 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/23 20:36:41 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,7 +90,6 @@ string extentionExtractor(string path)
 	return path.substr(pos);
 }
 
-
 void CGI::setupEnvironment(const Request &req, string root, string cgi, string path)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
@@ -127,10 +126,12 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 	{
 		queryString += req.getBody();
 		map<string, string> postParams = splitQueryString(req.getBody());
-		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it) {
+		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it)
+		{
 			env[it->first] = it->second;
 		}
-		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it) {
+		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it)
+		{
 			cout << "POST PARAMS: " << it->first << " = " << it->second << endl;
 		}
 	}
@@ -206,32 +207,18 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	int pid;
 	cgi = string(root) + string(cgi);
 	setupEnvironment(request, root, cgi, path);
-	
+
 	outputFile = "/tmp/output" + generateRandomName();
 	inputFile = "/tmp/" + generateRandomName();
 
-	    // Open input file before forking to ensure it exists
-    fstream input(inputFile.c_str(), ios::out | ios::binary | ios::trunc);
-    if (!input.is_open())
-    {
-        cerr << "Error: Unable to open file for CGI input: " << inputFile << endl;
-        throw CGIException("Error: CGI: Unable to open file for writing CGI input");
-    }
-
-    if (request.getMethod() == "POST" && !request.getBody().empty())
-    {
-        input << request.getBody();
-        input.flush(); // Ensure data is fully written before exec
-    }
-    input.close();
-	
-	if ((pid = fork()) == -1)	throw CGIException("Error: CGI: Fork failed");
+	if ((pid = fork()) == -1)
+		throw CGIException("Error: CGI: Fork failed");
 	if (!pid)
 	{
 		freopen(outputFile.c_str(), "w+", stdout);
-		freopen(inputFile.c_str(), "w+", stdin);
-		
-				vector<string> envStrings;
+		freopen(inputFile.c_str(), "r", stdin);
+
+		vector<string> envStrings;
 		for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
 		{
 			envStrings.push_back(it->first + "=" + it->second);
@@ -240,15 +227,14 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 		char **envp = new char *[envStrings.size() + 1];
 		for (size_t i = 0; i < envStrings.size(); i++)
 		{
-			envp[i] = const_cast<char*>(envStrings[i].c_str());
+			envp[i] = const_cast<char *>(envStrings[i].c_str());
 		}
 		envp[envStrings.size()] = NULL;
 
 		char *argv[] = {
-			const_cast<char*>(cgi_path.c_str()),
-			const_cast<char*>(cgi.c_str()),
-			NULL
-		};
+			const_cast<char *>(cgi_path.c_str()),
+			const_cast<char *>(cgi.c_str()),
+			NULL};
 
 		execve(cgi_path.c_str(), argv, envp);
 		perror("execve failed");
@@ -262,54 +248,44 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	}
 	else
 	{
-		// if (request.getMethod() == "POST" && !request.getBody().empty())
-		// {
-		// 	cout << "Writing POST body to CGI input file" << endl;
-		// 	fstream input(inputFile.c_str(), ios::out | ios::binary);
-		// 	if (!input.is_open())
-		// 	{
-		// 		cerr << "Error: Unable to open file for writing CGI input: " << inputFile << endl;
-		// 		throw CGIException("Error: CGI: Unable to open file for writing CGI input");
-		// 	}
-		// 	input << request.getBody();
-		// 	input.close();
-		// }
-    	response.isCgi = 1;                 
-    	response.cgiPid = pid;               
-    	response.cgiStartTime = time(NULL);  
-    	response.cgiOutputFile = outputFile;
-    	response.cgiInputFile = inputFile;
+		if (request.getMethod() == "POST" && !request.getBody().empty())
+		{
+			write(1,request.getBody().c_str(),request.getBody().size());
+		}
+		response.isCgi = 1;
+		response.cgiPid = pid;
+		response.cgiStartTime = time(NULL);
+		response.cgiOutputFile = outputFile;
+		response.cgiInputFile = inputFile;
 	}
 	cout << "CGI execution complete" << endl;
 	cout << response << endl;
 	return response;
 }
 
-
-
 string CGI::getResponse(string output)
 {
-    string response;
-    char buffer[4096];
-    ssize_t bytesRead;
+	string response;
+	char buffer[4096];
+	ssize_t bytesRead;
 
-    ifstream inFile(output.c_str(), ios::in | ios::binary);
-    if (!inFile.is_open())
-    {
-        cerr << "Error: Unable to open file for reading CGI response: " << outputFile << endl;
+	ifstream inFile(output.c_str(), ios::in | ios::binary);
+	if (!inFile.is_open())
+	{
+		cerr << "Error: Unable to open file for reading CGI response: " << outputFile << endl;
 		if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0)
-        	cerr << "Error removing inoutput file: " << strerror(errno) << endl;
-        return response;
-    }
+			cerr << "Error removing inoutput file: " << strerror(errno) << endl;
+		return response;
+	}
 
-    while ((bytesRead = inFile.readsome(buffer, sizeof(buffer)))){
-        response.append(buffer, bytesRead);
-    }
+	while ((bytesRead = inFile.readsome(buffer, sizeof(buffer))))
+	{
+		response.append(buffer, bytesRead);
+	}
 
-    inFile.close();
- 
+	inFile.close();
 
-    return response;
+	return response;
 }
 
 ResponseInfos CGI::parseOutput(string output)
@@ -318,11 +294,11 @@ ResponseInfos CGI::parseOutput(string output)
 	cout << "response string : " << output << endl;
 	size_t headerEnd = output.find("\r\n\r\n");
 
-	// if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
-	// {
-	// 	response.setStatus(FORBIDEN);
-	// 	response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
-	// }
+	if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
+	{
+		response.setStatus(FORBIDEN);
+		response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
+	}
 	if (headerEnd == string::npos)
 		headerEnd = output.find("\n\n");
 	if (headerEnd != string::npos)
