@@ -3,16 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 15:32:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:57:10 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
-Server::Server() :  serverIndex(INDEX), currentStateServer(INIT){}
+Server::Server() :  serverIndex(INDEX), currentStateServer(CONF){}
 
 ConnectionStatus::ConnectionStatus(){
     time_t now = time(NULL);
@@ -211,7 +211,6 @@ void Server::init()
     this->hints.ai_family = AF_INET;
     this->hints.ai_flags = AI_PASSIVE;
     this->hints.ai_socktype = SOCK_STREAM;
-    // this->requestHandler.server_config = this->configFile;  
     currentStateServer = ADDR; 
 }
 
@@ -220,6 +219,7 @@ void Server::start()
 
     switch (this->currentStateServer)
     {
+        case CONF       :           (this->checkConfigFile(),        ServerLogger(LOG_CONF, Logger::SUB, true));
         case INIT       :           (this->init(),                   ServerLogger(LOG_INIT, Logger::SUB, true)); 
         case ADDR       :           (this->createLinkedListOfAddr(), ServerLogger(LOG_ADDR, Logger::SUB, true));
         case SOCKETS    :           (this->createSockets(),          ServerLogger(LOG_SOCKETS, Logger::SUB, true)); 
@@ -324,4 +324,52 @@ bool    Server::hasCommonElement(std::vector<int>& v1, std::vector<int> v2) {
 bool   ConnectionStatus::isTimedOut() const
 {
     return difftime(lastActivityTime, acceptTime) >= TIMEOUT;
+}
+
+void    Server::checkConfigFile()
+{
+    if (CheckForConflictInServerName()) Error(2, ERR_CONF, W_SERVER_NAMES);
+    if (checkForDuplicatedLocations()) Error(2, ERR_CONF, W_LOCATION);
+    if (checkForDuplicatePortsInTheSameServer()) Error(2, ERR_CONF, W_PORT);
+    currentStateServer = INIT;
+}
+
+bool    Server::CheckForConflictInServerName()
+{
+    size_t                      index;
+    std::vector<std::string>    server_names;
+
+    index = INDEX;
+    while (++index < this->configFile.servers.size())
+    {
+        const std::vector<std::string>& names = this->configFile.servers[index].getServerNames();
+        server_names.insert(server_names.end(), names.begin(), names.end());
+    }
+    return ::isDuplicated<std::vector<std::string> >(server_names);
+}
+
+bool    Server::checkForDuplicatedLocations()
+{
+    size_t                         index, iter;
+    std::vector<std::string>        locations;
+    
+    index = INDEX;
+    while (++index < this->configFile.servers.size())
+    {
+        (locations.clear(), iter = INDEX);
+        while (++iter < this->configFile.servers[index].getLocations().size())
+            locations.push_back(this->configFile.servers[index].getLocations()[iter].getPath());
+        if (::isDuplicated<std::vector<std::string> >(locations)) return true;
+    }
+    return false;
+}
+
+bool    Server::checkForDuplicatePortsInTheSameServer()
+{
+    size_t                        index;
+
+    index = INDEX;
+    while(++index < this->configFile.servers.size())
+        if (::isDuplicated<std::vector<int> >(this->configFile.servers[index].getPorts())) return true;
+    return false;
 }

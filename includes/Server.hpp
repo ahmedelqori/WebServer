@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 18:44:50 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:58:25 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,9 +30,6 @@
 #include <ctime>
 
 
-# define TIMEOUT 45
-# define TIMEOUT_MESSAGE "HTTP/1.1 408 Request Timeout\r\n\r\n"
-# define BUFFER_SIZE_SERVER 8192
 
 class ConnectionStatus
 {
@@ -46,6 +43,7 @@ class ConnectionStatus
 
 enum StateServer
 {
+    CONF,
     INIT,
     ADDR,
     SOCKETS,
@@ -54,6 +52,19 @@ enum StateServer
     INIT_EPOLL,
     EPOLL
 };
+
+template <typename T> bool isDuplicated(T data)
+{
+    ssize_t index, checker, size;
+
+    index = INDEX;
+    size = static_cast<ssize_t>(data.size());
+    while ((checker = INDEX) && ++index < size)
+        while (++checker < size)
+            if (data[index] == data[checker] && index != checker)
+                return true;
+   return false; 
+}
 
 class  Server
 {
@@ -91,6 +102,7 @@ class  Server
         void                                                createSockets();
         void                                                timeoutChecker();
         void                                                processData(int);
+        void                                                checkConfigFile();
         void                                                acceptAndAnswer(int);
         void                                                CheckForTimeOut(int);
         void                                                registerAllSockets();
@@ -100,6 +112,9 @@ class  Server
         void                                                createLinkedListOfAddr();
         void                                                CreateAddrOfEachPort(int);
         void                                                deleteFromTimeContainer(int);
+        bool                                                checkForDuplicatedLocations();
+        bool                                                CheckForConflictInServerName();
+        bool                                                checkForDuplicatePortsInTheSameServer();
         void                                                ServerLogger(std::string,Logger::Level, bool);
         bool                                                hasCommonElement(std::vector<int>&, std::vector<int>);
         std::vector<ServerConfig>                           findCorrectServers(int);
