@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/23 18:09:55 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 20:38:02 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -674,6 +674,8 @@ ServerConfig RequestHandler::getServer(vector<ServerConfig> servers, std::string
 
 bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
 {
+
+    cout << "IS FIRST TIME" << endl;
     (void)request;
     vector<LocationConfig> locs = getServer(server_config, request.getHeader(HOST)).getLocations();
     LocationConfig bestMatch;
@@ -690,6 +692,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             if (pathLength > bestMatchLength)
             {
                 char nextChar = url[pathLength];
+               
                 if (nextChar == '/' || nextChar == '\0')
                 {
                     found = true;
@@ -699,10 +702,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             }
         }
     }
-    if (!found)
-        loc = locs[0];
-    else
-        loc = bestMatch;
+    loc = bestMatch;
     return found;
 }
 
