@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Logger.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/23 21:52:11 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/07 20:46:32 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:18:55 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@
 # define WARNING_COLOR  "\033[33m"  
 
 
+# define LOG_CONF       "Server is Checking Config file"
 # define LOG_INIT       "Server is initializing."
 # define LOG_ADDR       "Server is setting up the address."
 # define LOG_SOCKETS    "Server is creating sockets."
