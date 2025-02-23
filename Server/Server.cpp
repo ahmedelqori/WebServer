@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 16:16:33 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/23 19:09:43 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -156,17 +156,15 @@ void Server::processData(int index)
     
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
-
-    // std::cout << "IndexServer: " << IndexServer[events[index].data.fd] << std::endl;
-    // std::cout << "IndexPorts" << IndexPorts[IndexServer[events[index].data.fd]] << std::endl;
-        if (bytesReceived <= 0)
+    if (bytesReceived <= 0)
     {
         (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
         return;
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD, configFile.servers[IndexPorts[IndexServer[events[index].data.fd]]] );
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]])
+ );
 }
 
 void Server::acceptAndAnswer(int index)
@@ -291,10 +289,37 @@ void    Server::deleteFromTimeContainer(int fd)
     ClientStatus.erase(ClientStatus.begin() + i);
 }
 
-ServerConfig    Server::findCorrectServer(int fd)
+std::vector<ServerConfig>    Server::findCorrectServers(int fd)
 {
-    std::cout << IndexServer[fd] << std::endl;
+    std::string                 host;
+    std::vector<int>            ports;
+    size_t                      index;
+    std::vector<ServerConfig>   server;
+
+    index = INDEX;
+    host = this->configFile.servers[fd].getHost();
+    ports = this->configFile.servers[fd].getPorts();
+
+    while (++index < this->configFile.servers.size())
+    {
+        if (host != this->configFile.servers[index].getHost())
+            continue;
+        if (hasCommonElement(ports, this->configFile.servers[index].getPorts()) == false)
+            continue;
+        server.push_back(this->configFile.servers[index]);
+    }
+    return server;
 }
+
+bool    Server::hasCommonElement(std::vector<int>& v1, std::vector<int> v2) {
+    for (std::vector<int>::const_iterator it = v1.begin(); it != v1.end(); ++it) {
+        if (std::find(v2.begin(), v2.end(), *it) != v2.end()) {
+            return true;
+        }
+    }
+    return false; 
+}
+
 
 bool   ConnectionStatus::isTimedOut() const
 {

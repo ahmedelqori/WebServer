@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 15:17:43 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/21 18:44:50 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,7 +101,8 @@ class  Server
         void                                                CreateAddrOfEachPort(int);
         void                                                deleteFromTimeContainer(int);
         void                                                ServerLogger(std::string,Logger::Level, bool);
-        ServerConfig    findCorrectServer(int);
+        bool                                                hasCommonElement(std::vector<int>&, std::vector<int>);
+        std::vector<ServerConfig>                           findCorrectServers(int);
 };
 
 #endif

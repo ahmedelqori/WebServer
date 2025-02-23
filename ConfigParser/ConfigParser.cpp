@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/20 11:18:25 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/21 18:18:19 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,6 +92,7 @@ void    ConfigParser::checkClosedParenthesis()
 
 void    ConfigParser::parse()
 {
+    if (!static_cast<int>(this->fileContent.size())) Error(2, ERR_SYNTAX, W_EMPTY);
     while (this->index < static_cast<int>(this->fileContent.size()) && currentServerState != DONE)
     {
         switch (currentServerState)
