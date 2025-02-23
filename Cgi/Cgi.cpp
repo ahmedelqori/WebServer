@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Cgi.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/21 19:38:55 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 20:36:41 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,7 +90,6 @@ string extentionExtractor(string path)
 	return path.substr(pos);
 }
 
-
 void CGI::setupEnvironment(const Request &req, string root, string cgi, string path)
 {
 	cout << "Setting up environment variables for CGI script" << endl;
@@ -127,10 +126,12 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 	{
 		queryString += req.getBody();
 		map<string, string> postParams = splitQueryString(req.getBody());
-		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it) {
+		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it)
+		{
 			env[it->first] = it->second;
 		}
-		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it) {
+		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it)
+		{
 			cout << "POST PARAMS: " << it->first << " = " << it->second << endl;
 		}
 	}
@@ -187,6 +188,8 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 string generateRandomName()
 {
 	string name = "tmp_";
+	time_t t;
+	srand((unsigned)time(&t));
 	for (int i = 0; i < 10; i++)
 	{
 		name += 'a' + rand() % 26;
@@ -204,17 +207,18 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	int pid;
 	cgi = string(root) + string(cgi);
 	setupEnvironment(request, root, cgi, path);
-	
-	outputFile = "output" + generateRandomName();
-	inputFile = generateRandomName();
-	
-	if ((pid = fork()) == -1)	throw CGIException("Error: CGI: Fork failed");
+
+	outputFile = "/tmp/output" + generateRandomName();
+	inputFile = "/tmp/" + generateRandomName();
+
+	if ((pid = fork()) == -1)
+		throw CGIException("Error: CGI: Fork failed");
 	if (!pid)
 	{
 		freopen(outputFile.c_str(), "w+", stdout);
-		freopen(inputFile.c_str(), "w+", stdin);
-		
-				vector<string> envStrings;
+		freopen(inputFile.c_str(), "r", stdin);
+
+		vector<string> envStrings;
 		for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
 		{
 			envStrings.push_back(it->first + "=" + it->second);
@@ -223,15 +227,14 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 		char **envp = new char *[envStrings.size() + 1];
 		for (size_t i = 0; i < envStrings.size(); i++)
 		{
-			envp[i] = const_cast<char*>(envStrings[i].c_str());
+			envp[i] = const_cast<char *>(envStrings[i].c_str());
 		}
 		envp[envStrings.size()] = NULL;
 
 		char *argv[] = {
-			const_cast<char*>(cgi_path.c_str()),
-			const_cast<char*>(cgi.c_str()),
-			NULL
-		};
+			const_cast<char *>(cgi_path.c_str()),
+			const_cast<char *>(cgi.c_str()),
+			NULL};
 
 		execve(cgi_path.c_str(), argv, envp);
 		perror("execve failed");
@@ -245,43 +248,44 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	}
 	else
 	{
-    	response.isCgi = 1;                 
-    	response.cgiPid = pid;               
-    	response.cgiStartTime = time(NULL);  
-    	response.cgiOutputFile = outputFile;
-    	response.cgiInputFile = inputFile;
+		if (request.getMethod() == "POST" && !request.getBody().empty())
+		{
+			write(1,request.getBody().c_str(),request.getBody().size());
+		}
+		response.isCgi = 1;
+		response.cgiPid = pid;
+		response.cgiStartTime = time(NULL);
+		response.cgiOutputFile = outputFile;
+		response.cgiInputFile = inputFile;
 	}
 	cout << "CGI execution complete" << endl;
 	cout << response << endl;
 	return response;
 }
 
-
-
 string CGI::getResponse(string output)
 {
-    string response;
-    char buffer[4096];
-    ssize_t bytesRead;
+	string response;
+	char buffer[4096];
+	ssize_t bytesRead;
 
-    ifstream inFile(output.c_str(), ios::in | ios::binary);
-    if (!inFile.is_open())
-    {
-        cerr << "Error: Unable to open file for reading CGI response: " << outputFile << endl;
-        if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0 )
-            cerr << "Error removing output file: " << strerror(errno) << endl;
-        return response;
-    }
+	ifstream inFile(output.c_str(), ios::in | ios::binary);
+	if (!inFile.is_open())
+	{
+		cerr << "Error: Unable to open file for reading CGI response: " << outputFile << endl;
+		if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0)
+			cerr << "Error removing inoutput file: " << strerror(errno) << endl;
+		return response;
+	}
 
-    while ((bytesRead = inFile.readsome(buffer, sizeof(buffer)))){
-        response.append(buffer, bytesRead);
-    }
+	while ((bytesRead = inFile.readsome(buffer, sizeof(buffer))))
+	{
+		response.append(buffer, bytesRead);
+	}
 
-    inFile.close();
-    if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0)
-        cerr << "Error removing output file: " << strerror(errno) << endl;
+	inFile.close();
 
-    return response;
+	return response;
 }
 
 ResponseInfos CGI::parseOutput(string output)
