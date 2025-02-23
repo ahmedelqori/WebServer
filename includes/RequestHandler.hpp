@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:28:36 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 15:57:13 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 15:32:58 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,15 +102,15 @@ public:
     Request request;
     string reqBuffer;
     bool validCRLF;
-    ServerConfig server_config;
+    vector<ServerConfig> server_config;
     
     bool getFinalUrl(string& url);
     bool alreadyExist(string url);
     ResponseInfos serverRootOrRedirect(RessourceInfo ressource);
-    ServerConfig getServer(ConfigParser configParser, std::string host);
+    ServerConfig getServer(vector<ServerConfig>, std::string host);
     bool hasErrorPage(int code);
     string getErrorPage(int code);
-    void handleRequest(int client_sockfd, string req, int epoll_fd,ServerConfig);
+    void handleRequest(int client_sockfd, string req,int, int epoll_fd,vector<ServerConfig>);
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
     bool is_CgiRequest(string url, map<string, string> cgiInfos);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 18:44:35 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/23 15:32:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -156,7 +156,6 @@ void Server::processData(int index)
     
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
-    findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]]);
     if (bytesReceived <= 0)
     {
         (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
@@ -164,7 +163,8 @@ void Server::processData(int index)
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData, epollFD, configFile.servers[IndexPorts[IndexServer[events[index].data.fd]]] );
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]])
+ );
 }
 
 void Server::acceptAndAnswer(int index)

@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 15:51:27 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 17:13:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,24 +14,25 @@
 
 HttpParser::HttpParser() : state(REQUEST_LINE) {}
 
-Request HttpParser::parse(const string &data)
+Request HttpParser::parse(const string &data, int size)
 {
+
     string line;
     bool hasCRLF = false;
-    for (size_t i = 0; i < data.size(); ++i)
+    for (int i = 0; i < size; ++i)
     {
         if (data[i] == '\r' && state != BODY)
         {
             if (state == REQUEST_LINE && data[i - 1] && data[i - 1] == ' ')
                 throw BAD_REQUEST;
-            if (i + 1 < data.size() && data[i + 1] == '\n')
+            if (i + 1 < size && data[i + 1] == '\n')
             {
                 i++;
                 if (data[i + 1] == ' ')
                     throw BAD_REQUEST;
                 if (!line.empty())
                 {
-                    processLine(line);
+                    processLine(line, i);
                     line.clear();
                 }
                 else if (state == HEADER)
@@ -50,7 +51,7 @@ Request HttpParser::parse(const string &data)
     if (!hasCRLF && state == HEADER)
         throw BAD_REQUEST;
     if (!line.empty())
-        processLine(line);
+        processLine(line, 0);
 
     validateHeaders();
 
@@ -65,12 +66,12 @@ Request HttpParser::parse(const string &data)
     return request;
 }
 
-void HttpParser::processLine(const string &line)
+void HttpParser::processLine(const string &line, int position)
 {
     switch (state)
     {
     case REQUEST_LINE:
-        parseRequestLine(line);
+        parseRequestLine(line, position);
         break;
     case HEADER:
         parseHeader(line);
@@ -86,16 +87,29 @@ bool HttpParser::isChunkedData()
     return (headers.count(TRANSFER_ENCODING) > 0 && headers[TRANSFER_ENCODING] == CHUNKED);
 }
 
-void HttpParser::parseRequestLine(const string &line)
+void HttpParser::parseRequestLine(const string &line, int i)
 {
+    (void)i;
     stringstream ss(line);
     string last;
+    int j = 0;
+    if (line[j] <= 32)
+        throw BAD_REQUEST;
+    while (j < i)
+    {
+        if ((line[j] == ' ' && line[j + 1] && line[j + 1] == ' ') || (line[j] >= 9 && line[j] <= 13))
+            throw BAD_REQUEST;
+        j++;
+    }
+
     ss >> method >> uri >> version >> last;
 
     if (method.empty() || uri.empty() || version.empty() || !last.empty())
     {
         throw BAD_REQUEST;
     }
+    if (uri[0] != '/')
+        throw BAD_REQUEST;
     if (version != HTTP_VERSION)
     {
         throw VERSION_NOT_SUPPORTED;
@@ -119,30 +133,48 @@ void HttpParser::parseRequestLine(const string &line)
 void HttpParser::parseHttpUrl(string &url)
 {
 
-     string ipWithPort, path;
-        
-        size_t pos = url.find("://");
-        if (pos != string::npos) {
-            pos += 3; 
-        } else {
-            pos = 0; 
-        }
+    string ipWithPort, path;
 
-        size_t pathPos = url.find("/", pos);
-        if (pathPos != string::npos) {
-            ipWithPort = url.substr(pos, pathPos - pos); 
-            path = url.substr(pathPos); 
-        } else {
-            ipWithPort = url.substr(pos); 
-            path = "/"; 
-        }
-        url = path;
+    size_t pos = url.find("://");
+    if (pos != string::npos)
+    {
+        pos += 3;
+    }
+    else
+    {
+        pos = 0;
+    }
+
+    size_t pathPos = url.find("/", pos);
+    if (pathPos != string::npos)
+    {
+        ipWithPort = url.substr(pos, pathPos - pos);
+        path = url.substr(pathPos);
+    }
+    else
+    {
+        ipWithPort = url.substr(pos);
+        path = "/";
+    }
+    url = path;
 }
 
 static void lowerString(string &str)
 {
     for (size_t i = 0; i < str.size(); i++)
         str[i] = tolower(str[i]);
+}
+
+static void validateWhiteSpaces(string str)
+{
+    int i = 0;
+    while (str[i])
+    {
+        if (str[i] == ' ')
+            throw BAD_REQUEST;
+        i++;
+    }
+    
 }
 
 void HttpParser::parseHeader(const string &line)
@@ -164,8 +196,13 @@ void HttpParser::parseHeader(const string &line)
 
     if ((!value.empty() && value[0] != ' ') || value[1] == ' ')
         throw BAD_REQUEST;
+    if (value.size() < 2)
+        throw BAD_REQUEST;
 
-    trim(name);
+    if (name.find('\n') != string::npos)
+        throw BAD_REQUEST;
+    validateWhiteSpaces(name);
+    // trim(name);
     lowerString(name);
     trim(value);
 
@@ -201,6 +238,7 @@ void HttpParser::validateHeaders()
 
 void HttpParser::validateMethod(const std::string &method)
 {
+
     if (method != POST && method != GET && method != DELETE)
         throw NOT_ALLOWED;
 }
