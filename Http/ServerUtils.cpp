@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/21 12:11:02 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:58:49 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,9 @@ static std::size_t getFileSize(const std::string &filePath)
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
 
-    if (access(filePath.c_str(), F_OK | R_OK) != 0)
+    if (access(filePath.c_str(), F_OK ) != 0)
+        throw NOT_FOUND;
+    if (access(filePath.c_str(), R_OK ) != 0)
         throw FORBIDEN;
 
     ResponseInfos response;
@@ -74,7 +76,7 @@ ResponseInfos ServerUtils::handleRedirect(const string &redirectUrl, int statusC
     ResponseInfos infos;
     infos.body = redirectResponse.str();
     infos.headers["Location"] = redirectUrl;
-    cout  << "Redirect URL: " << redirectUrl << endl;
+    // cout  << "Redirect URL: " << redirectUrl << endl;
     infos.status = statusCode;
     infos.statusMessage = "Moved permanently";
     return infos;
