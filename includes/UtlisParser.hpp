@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/21 18:13:47 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/23 20:22:10 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ void                            Error(int count, ...);
 #define ERR_FILE_NOT_EXIST          "File doesnt exist"
 #define ERR_MIS_PAR                 "Missing closing parenthesis Or parenthesis not in single line"
 #define ERR_OPEN_PAR                "Open parenthesis doesnt exist for "
-#define ERR_CLOSE_PAR               "Closed parenthesis doesnt exist for "
+#define ERR_CLOSE_PAR               "Unkown Param or Closed parenthesis doesnt exist for "
 #define ERR_DUPLICATED              "Duplicated"
 #define ERR_INVALID_STATUS_CODE     "Invalid Status Code"
 #define ERR_UNKNOWN_METHOD          "Unknown Method"
@@ -67,6 +67,7 @@ void                            Error(int count, ...);
 #define W_REDIRECTION               "redirect"
 #define W_AUTO_INDEX                "auto_index"
 #define W_INDEX                     "index"
+#define W_UPLOAD                    "upload"
 #define W_CGI                       "cgi_extension"
 #define GET                         "GET"
 #define POST                        "POST"
