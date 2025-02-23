@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/23 20:36:41 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/23 22:30:08 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -248,10 +248,17 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	}
 	else
 	{
-		if (request.getMethod() == "POST" && !request.getBody().empty())
-		{
-			write(1,request.getBody().c_str(),request.getBody().size());
-		}
+		if (request.getMethod() == "POST" && !request.getBody().empty())	
+    	{
+    	    std::ofstream inputFileStream(inputFile.c_str(), std::ios::out | std::ios::binary);
+    	    if (inputFileStream.is_open())
+    	    {
+    	        inputFileStream << request.getBody();
+    	        inputFileStream.close();
+    	    }
+    	    else
+    	        cerr << "Error: Failed to write to input file for CGI" << endl;
+    	}
 		response.isCgi = 1;
 		response.cgiPid = pid;
 		response.cgiStartTime = time(NULL);

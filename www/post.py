@@ -13,7 +13,7 @@ def main():
         content_length = int(os.environ.get("CONTENT_LENGTH", 0))
         
         # Read raw POST data from stdin
-        post_data = sys.stdin.buffer.read(content_length)
+        post_data = sys.stdin.buffer.read(content_length).decode("utf-8")
         
         # Print environment variables for debugging
         print("Environment variables:")
