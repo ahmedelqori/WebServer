@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/23 20:38:02 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 21:07:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,21 +36,21 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         cleanupConnection(epoll_fd, current_fd);
         return;
     }
-    ResponseInfos &response_info = responses_info[current_fd];
+    // ResponseInfos &response_info = responses_info[current_fd];
     if (responses_info[current_fd].isCgi == true)
     {
-
+        cout << "HELLO " << endl;
         int status;
-        pid_t ret = waitpid(response_info.cgiPid, &status, WNOHANG);
+        pid_t ret = waitpid(responses_info[current_fd].cgiPid, &status, WNOHANG);
         time_t now = time(NULL);
 
-        if (now - response_info.cgiStartTime >= CGI_TIMEOUT)
+        if (now - responses_info[current_fd].cgiStartTime >= CGI_TIMEOUT)
         {
 
-            kill(response_info.cgiPid, SIGKILL);
-            waitpid(response_info.cgiPid, &status, 0);
-            response_info.isCgi = false;
-            if (response_info.headers.empty())
+            kill(responses_info[current_fd].cgiPid, SIGKILL);
+            waitpid(responses_info[current_fd].cgiPid, &status, 0);
+            responses_info[current_fd].isCgi = false;
+            if (responses_info[current_fd].headers.empty())
             {
                 if (hasErrorPage(CGI_TIMEOUT1))
                     responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(CGI_TIMEOUT1), CGI_TIMEOUT1);
@@ -64,16 +64,15 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
             return;
         }
-
         else if (ret > 0)
         {
 
             CGI cgiInstance;
-            string output = cgiInstance.getResponse(response_info.cgiOutputFile);
+            string output = cgiInstance.getResponse(responses_info[current_fd].cgiOutputFile);
             ResponseInfos parsedResponse = cgiInstance.parseOutput(output);
-            response_info = parsedResponse;
-            response_info.isCgi = false;
-            if (response_info.headers.empty())
+            responses_info[current_fd] = parsedResponse;
+            responses_info[current_fd].isCgi = false;
+            if (responses_info[current_fd].headers.empty())
             {
                 if (hasErrorPage(BAD_GATEWAY))
                     responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(BAD_GATEWAY), BAD_GATEWAY);
@@ -83,12 +82,12 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         }
     }
 
-    if (!response_info.headers.empty())
+    if (!responses_info[current_fd].headers.empty())
     {
 
         Response responseHeaders;
-        responseHeaders.setStatus(response_info.status, response_info.statusMessage);
-        for (map<string, string>::const_iterator it = response_info.headers.begin(); it != response_info.headers.end(); ++it)
+        responseHeaders.setStatus(responses_info[current_fd].status, responses_info[current_fd].statusMessage);
+        for (map<string, string>::const_iterator it = responses_info[current_fd].headers.begin(); it != responses_info[current_fd].headers.end(); ++it)
         {
             responseHeaders.addHeader(it->first, it->second);
         }
@@ -102,32 +101,32 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
             cleanupConnection(epoll_fd, current_fd);
             return;
         }
-        response_info.headers.clear();
+        responses_info[current_fd].headers.clear();
         responses_info[current_fd].bytes_written = 0;
         return;
     }
 
-    if (!response_info.body.empty())
+    if (!responses_info[current_fd].body.empty())
     {
 
-        ssize_t bytes_sent = send(current_fd, response_info.body.c_str(), response_info.body.length(), 0);
+        ssize_t bytes_sent = send(current_fd, responses_info[current_fd].body.c_str(), responses_info[current_fd].body.length(), 0);
         if (bytes_sent <= 0)
         {
 
             cleanupConnection(epoll_fd, current_fd);
             return;
         }
-        response_info.body = response_info.body.substr(bytes_sent);
-        if (response_info.body.empty())
+        responses_info[current_fd].body = responses_info[current_fd].body.substr(bytes_sent);
+        if (responses_info[current_fd].body.empty())
         {
 
             cleanupConnection(epoll_fd, current_fd);
         }
     }
 
-    if (response_info.filePath != "")
+    if (responses_info[current_fd].filePath != "")
     {
-        ifstream fileStream(response_info.filePath.c_str(), ios::in | ios::binary);
+        ifstream fileStream(responses_info[current_fd].filePath.c_str(), ios::in | ios::binary);
         if (!fileStream.is_open())
         {
             cleanupConnection(epoll_fd, current_fd);
@@ -692,8 +691,8 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             if (pathLength > bestMatchLength)
             {
                 char nextChar = url[pathLength];
-               
-                if (nextChar == '/' || nextChar == '\0')
+                cout << "next char: " << nextChar << endl;
+                if (url[pathLength - 1] == '/' || nextChar == '\0')
                 {
                     found = true;
                     bestMatch = locs[i];
@@ -703,6 +702,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
         }
     }
     loc = bestMatch;
+    cout << " Upload dir : " << loc.getUploadDir() << endl;
     return found;
 }
 
