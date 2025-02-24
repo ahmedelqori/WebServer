@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/23 21:52:11 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 21:18:55 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 14:31:57 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,7 @@
 # define LOG_LISTEN     "Server is listening for connections."
 # define LOG_INIT_EPOLL "Server is initializing epoll."
 # define LOG_EPOLL      "Server is waiting for events with epoll."
-
+# define LOG_START      "Server Started"
 
 class Logger {
     public:

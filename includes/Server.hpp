@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 21:58:25 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 13:54:34 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,7 +109,10 @@ class  Server
         void                                                addClientToEpoll(int);
         void                                                acceptConnection(int);  
         void                                                listenForConnection();
+        void                                                regenarateNewValidPath();
+        bool                                                checkValidLocationPath();
         void                                                createLinkedListOfAddr();
+        bool                                                isValidPath(std::string);
         void                                                CreateAddrOfEachPort(int);
         void                                                deleteFromTimeContainer(int);
         bool                                                checkForDuplicatedLocations();
@@ -117,6 +120,7 @@ class  Server
         bool                                                checkForDuplicatePortsInTheSameServer();
         void                                                ServerLogger(std::string,Logger::Level, bool);
         bool                                                hasCommonElement(std::vector<int>&, std::vector<int>);
+        std::string                                         simplifyPath(std::string);
         std::vector<ServerConfig>                           findCorrectServers(int);
 };
 
