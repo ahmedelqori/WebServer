@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 19:50:24 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/24 19:59:52 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,7 @@ void Server::CreateAddrOfEachPort(int serverIndex)
                         &this->res[indexRes++]) != 0)
             Error(2, ERR_SERVER, ERR_GETADDRINFO);
         IndexPorts.insert(pair<int, int>(indexPort, serverIndex));
+        MapPorts.insert(pair<int, int>(indexPort, this->configFile.servers[serverIndex].getPorts()[index]));
         indexPort++;
     }
 }
@@ -165,8 +166,7 @@ void Server::processData(int index)
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]])
- );
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]], MapPorts[IndexServer[events[index].data.fd]]));
 }
 
 void Server::acceptAndAnswer(int index)
@@ -288,7 +288,7 @@ void    Server::deleteFromTimeContainer(int fd)
     ClientStatus.erase(ClientStatus.begin() + i);
 }
 
-std::vector<ServerConfig>    Server::findCorrectServers(int fd)
+std::vector<ServerConfig>    Server::findCorrectServers(int fd, int port)
 {
     std::string                 host;
     std::vector<int>            ports;
@@ -297,7 +297,7 @@ std::vector<ServerConfig>    Server::findCorrectServers(int fd)
 
     index = INDEX;
     host = this->configFile.servers[fd].getHost();
-    ports = this->configFile.servers[fd].getPorts();
+    ports.push_back(port);
 
     while (++index < this->configFile.servers.size())
     {

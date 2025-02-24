@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/24 19:57:21 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/24 20:08:01 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,6 @@ HttpParser::HttpParser() : state(REQUEST_LINE),method(""),uri(""),version(""),bo
 Request HttpParser::parse(const string &data, int size)
 {
     string line = "";
-    cout << "DATA: " << data << endl;
     bool hasCRLF = false;
     if (size == 0)
         throw BAD_REQUEST;
