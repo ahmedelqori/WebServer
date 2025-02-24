@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:44:03 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 11:18:27 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 15:32:20 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -152,4 +152,20 @@ bool isValidCharInPath(char c)
 {
     if (isalpha(c) || isdigit(c) || c == SLASH|| c == UNDER_SCORE || c == HYPHENS) return true;
     return false;
+}
+
+void    handleSignalInterrupt(int sig)
+{
+    Logger logger;
+    if (sig == SIGINT)
+    {
+       (std::cout << std::endl, close(*(int*)GlobalEpollFd()));
+       (logger.log(logger.INFO, LOG_END) ,std::exit(0));
+    }
+}
+
+void    *GlobalEpollFd()
+{
+    static  int fd = -1;
+    return (&fd);
 }

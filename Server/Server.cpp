@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 14:32:37 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 15:26:13 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,7 +103,9 @@ void Server::init_epoll()
 {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
+    signal(SIGINT, handleSignalInterrupt);
     this->epollFD = epoll_create(1);
+    *(int*)GlobalEpollFd() = this->epollFD;
     if (epollFD == -1) Error(2, ERR_SERVER, ERR_EPOLL_CREATE);
     this->registerAllSockets();
     currentStateServer = EPOLL;
