@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 14:31:03 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 15:27:12 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,13 +18,16 @@
 #include <iostream>
 #include <stdexcept>
 #include <bits/stdc++.h>
+#include "./Logger.hpp"
 
 long                            parse_size(const std::string& str);
 std::string                     itoa(size_t n);
 std::string                     trim(const std::string& str);
 std::vector<std::string>        splitString(const std::string& input, const std::string& delimiters);
 
+void                            *GlobalEpollFd();
 bool                            isValidCharInPath(char c);
+void                            handleSignalInterrupt(int sig);
 bool                            is_number(std::string str, int index);
 bool                            is_hostname(std::string str, int index);
 bool                            is_ipaddress(std::string str, int index);
@@ -32,7 +35,6 @@ bool                            is_valid_size(std::string str, int index);
 bool                            is_statuscode(std::string str, int index);
 bool                            is_valid_server_name(std::string str, int index);
 bool                            is_duplicated(std::vector<std::string> vec, std::string v, int index);
-
 
 void                            Error(int count, ...);
 
