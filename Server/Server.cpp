@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 19:59:52 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/24 20:32:46 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,7 +166,8 @@ void Server::processData(int index)
     }
     this->resetTime(events[index].data.fd);
     requestData.append(buffer, bytesReceived);
-    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]], MapPorts[IndexServer[events[index].data.fd]]));
+    if (!requestData.empty()) this->requestHandler.handleRequest(events[index].data.fd, requestData,bytesReceived,epollFD, 
+    findCorrectServers(IndexPorts[IndexServer[events[index].data.fd]], MapPorts[IndexServer[events[index].data.fd]]), false);
 }
 
 void Server::acceptAndAnswer(int index)
@@ -246,7 +247,8 @@ void    Server::CheckForTimeOut(int fd)
     if (i == this->ClientStatus.size()) return;
 
     if (ClientStatus[i].second.isTimedOut())
-        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, TIMEOUT_MESSAGE, strlen(TIMEOUT_MESSAGE),0),requestHandler.cleanupConnection(epollFD,fd));
+        (ClientStatus.erase(ClientStatus.begin() + i), this->requestHandler.handleRequest(fd, "", -1 ,epollFD, 
+        findCorrectServers(IndexPorts[IndexServer[fd]], MapPorts[IndexServer[fd]]) ,true));
 }
 
 void    Server::timeoutChecker()
