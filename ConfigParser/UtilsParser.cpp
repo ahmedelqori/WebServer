@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:44:03 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/20 11:18:27 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 11:18:27 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,4 +146,10 @@ long parse_size(const std::string& str) {
     if (str == MEGA) return 1024 * 1024;
     if (str == GIGA) return 1024 * 1024 * 1024;
     return 0;
+}
+
+bool isValidCharInPath(char c)
+{
+    if (isalpha(c) || isdigit(c) || c == SLASH|| c == UNDER_SCORE || c == HYPHENS) return true;
+    return false;
 }

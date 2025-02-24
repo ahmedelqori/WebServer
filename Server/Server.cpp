@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 22:02:51 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 14:32:37 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,7 @@ void Server::CreateAddrOfEachPort(int serverIndex)
                         itoa(this->configFile.servers[serverIndex].getPorts()[index]).c_str(),
                         &this->hints,
                         &this->res[indexRes++]) != 0)
-            Error(2, "Error Server:: ", "in getaddre info");
+            Error(2, ERR_SERVER, ERR_GETADDRINFO);
         IndexPorts.insert(pair<int, int>(indexPort, serverIndex));
         indexPort++;
     }
@@ -65,9 +65,9 @@ void Server::createSockets()
     while (++index < this->res.size())
     {
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype | SOCK_NONBLOCK, this->res[index]->ai_protocol);
-        if (sockFD == -1) Error(2, "Error Server:: ", "sockets");
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEADDR");
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, "Error Server:: ", "setsockopt", "SO_REUSEPORT");
+        if (sockFD == -1) Error(2, ERR_SERVER, ERR_SOCKETS);
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, ERR_SERVER, ERR_SETSOCKOPT, ERR_REUSEADDR);
+        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, ERR_SERVER, ERR_SETSOCKOPT, ERR_REUSEPORT);
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
@@ -81,7 +81,7 @@ void Server::bindSockets()
     while (++index < this->socketContainer.size())
     {
         status = bind(this->socketContainer[index], this->res[index]->ai_addr, this->res[index]->ai_addrlen);
-        if (status == -1) Error(2, "Error Server:: ", "bind");
+        if (status == -1) Error(2, ERR_SERVER, ERR_BIND);
     }
     currentStateServer = LISTEN;
 }
@@ -94,7 +94,7 @@ void Server::listenForConnection()
     while (++index < this->res.size())
     {
         status = listen(this->socketContainer[index], 10);
-        if (status == -1) Error(2, "Error Server:: ", "listen");
+        if (status == -1) Error(2, ERR_SERVER, ERR_LISTEN);
     }
     currentStateServer = INIT_EPOLL;
 }
@@ -104,7 +104,7 @@ void Server::init_epoll()
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     this->epollFD = epoll_create(1);
-    if (epollFD == -1) Error(2, "Error Server:: ", "epoll_create");
+    if (epollFD == -1) Error(2, ERR_SERVER, ERR_EPOLL_CREATE);
     this->registerAllSockets();
     currentStateServer = EPOLL;
 }
@@ -117,7 +117,7 @@ void Server::registerAllSockets()
     {
         this->event.events = EPOLLIN;
         this->event.data.fd = this->socketContainer[index];
-        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) (ServerLogger("Cannot Add Register Client", Logger::ERROR, false));
+        if (epoll_ctl(epollFD, EPOLL_CTL_ADD, this->socketContainer[index], &event) == -1) (ServerLogger(ERR_CANNOT_REGISTER_CLIENT, Logger::ERROR, false));
     }
 }
 
@@ -127,7 +127,7 @@ void Server::addClientToEpoll(int clientFD)
     
     event.data.fd = clientFD;
     event.events = EPOLLIN;
-    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1) (close(clientFD), ServerLogger("Cannot Add Client To Epoll", Logger::ERROR, false)); 
+    if (epoll_ctl(epollFD, EPOLL_CTL_ADD, clientFD, &event) == -1) (close(clientFD), ServerLogger(ERR_CANNOT_ADD_CLIENT, Logger::ERROR, false)); 
 }
 
 void Server::acceptConnection(int index)
@@ -140,7 +140,7 @@ void Server::acceptConnection(int index)
     acceptFD = accept(events[index].data.fd, (struct sockaddr *)&clientAddr, &addrLen);
     if (acceptFD == -1)
     {
-        if (errno != EAGAIN && errno != EWOULDBLOCK)  (ServerLogger("Cannot Accept Connection", Logger::ERROR, false));
+        if (errno != EAGAIN && errno != EWOULDBLOCK)  (ServerLogger(ERR_CANNOT_ACCEPT, Logger::ERROR, false));
         return;
     }
     ClientStatus.push_back(make_pair(acceptFD, ConnectionStatus()));
@@ -158,7 +158,7 @@ void Server::processData(int index)
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
     if (bytesReceived <= 0)
     {
-        (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd),ServerLogger("Client disconnected", Logger::INFO, false));
+        (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd));
         return;
     }
     this->resetTime(events[index].data.fd);
@@ -186,18 +186,15 @@ void Server::findServer()
 
 void Server::loopAndWait()
 {
-    ServerLogger("Server Started", Logger::INFO, false);
+    ServerLogger(LOG_START, Logger::INFO, false);
     while (true)
     {
-        this->nfds = epoll_wait(epollFD, events, MAX_EVENTS, 5000);
+        this->nfds = epoll_wait(epollFD, events, MAX_EVENTS, TIMEOUT_EPOLL);
         if (this->nfds == -1) {
             if (errno == EINTR) {
-                ServerLogger("epoll_wait interrupted by signal. Retrying...", Logger::WARNING, false);
+                ServerLogger(ERR_EPOLL_INTERRUPTED, Logger::WARNING, false);
                 continue;
-            } else {
-                ServerLogger("epoll_wait failed: " + std::string(strerror(errno)), Logger::ERROR, false);
-                Error(2, "Critical Error in Server:: ", "epoll_wait");
-            }
+            } else Error(2, ERR_EPOLL_CRITICAL, W_EPOLL_WAIT);
         }
         if (this->nfds == 0) this->timeoutChecker();
         if (this->nfds > 0) this->findServer();
@@ -233,7 +230,7 @@ void Server::start()
 
 void    Server::ServerLogger(std::string message ,Logger::Level level , bool is_sub)
 {
-   usleep(500 * 1000);
+   usleep(SLEEP_LOGGER);
    if (is_sub) this->logger.overwriteLine(message);
    else this->logger.log(level, message);
 }
@@ -329,6 +326,7 @@ bool   ConnectionStatus::isTimedOut() const
 void    Server::checkConfigFile()
 {
     if (CheckForConflictInServerName()) Error(2, ERR_CONF, W_SERVER_NAMES);
+    if (!checkValidLocationPath()) Error(2, ERR_CONF, W_LOCATION);
     if (checkForDuplicatedLocations()) Error(2, ERR_CONF, W_LOCATION);
     if (checkForDuplicatePortsInTheSameServer()) Error(2, ERR_CONF, W_PORT);
     currentStateServer = INIT;
@@ -372,4 +370,53 @@ bool    Server::checkForDuplicatePortsInTheSameServer()
     while(++index < this->configFile.servers.size())
         if (::isDuplicated<std::vector<int> >(this->configFile.servers[index].getPorts())) return true;
     return false;
+}
+
+bool    Server::checkValidLocationPath()
+{
+    size_t              index, iter = INDEX;
+
+    index = INDEX;
+    while ((iter = INDEX) && ++index < this->configFile.servers.size())
+        while (++iter < this->configFile.servers[index].getLocations().size())
+            if (isValidPath(this->configFile.servers[index].getLocations()[iter].getPath()) == false) return false;
+    regenarateNewValidPath();
+    return true;
+}
+
+bool    Server::isValidPath(std::string str)
+{
+    size_t              index;
+
+    index = INDEX;
+    if (str[++index] != SLASH) return false;
+    while (++index < str.size())
+        if (isValidCharInPath(str[index]) == false) return false;
+    return true;
+}
+
+void    Server::regenarateNewValidPath()
+{
+    size_t              index, iter = INDEX;
+    std::string         path;
+
+    index = INDEX;
+    while ((iter = INDEX) && ++index < this->configFile.servers.size())
+        while (++iter < this->configFile.servers[index].getLocations().size())
+           (path = simplifyPath(this->configFile.servers[index].getLocations()[iter].getPath()), this->configFile.servers[index].getLocations()[iter].setPath(path));
+}
+
+
+std::string    Server::simplifyPath(std::string str)
+{
+    size_t                      index;
+    std::string                 path;
+    std::vector<std::string>    Array;
+
+    index =INDEX;
+    path += SLASH;
+    Array = splitString(str, SLASH_STR);
+    while (++index < Array.size())
+        path += Array[index];
+    return path;
 }
