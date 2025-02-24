@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>408 - Request Timeout</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #121212;
+            color: #fff;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 400px;
+            padding: 30px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        h1 {
+            font-size: 100px;
+            color: #ff4c4c;
+            font-weight: bold;
+        }
+
+        p {
+            font-size: 18px;
+            margin: 10px 0 20px;
+            color: #bbb;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #ff4c4c;
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: background 0.3s ease-in-out;
+        }
+
+        .btn:hover {
+            background: #e04343;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>408</h1>
+        <p>Oops! The request took too long to respond.</p>
+        <p>Please try again.</p>
+        <a href="/" class="btn">Go Home</a>
+    </div>
+
+</body>
+</html>
