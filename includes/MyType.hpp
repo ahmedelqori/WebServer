@@ -12,6 +12,7 @@ using namespace std;
 #define INTERNAL_SERVER_ERROR 500
 #define FORBIDEN 403
 #define REDIRECTED 301
+#define UNAUTHORIZED 401
 #define NOT_ALLOWED 405
 #define NOT_FOUND 404
 #define URI_TOO_LONG 414

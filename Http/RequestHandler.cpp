@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/23 21:56:46 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 23:47:04 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -213,27 +213,30 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
                     throw BAD_REQUEST;
                 string url = request.getDecodedPath();
                 if (!getFinalUrl(url))
-                {
                     throw NOT_FOUND;
-                }
 
                 LocationConfig location;
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
 
+                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
+                        throw NOT_ALLOWED;
+                    if (location.getUploadDir().empty())
+                        throw UNAUTHORIZED;
+
                     ChunkedUploadState state;
                     state.headers_parsed = true;
                     state.content_remaining = 0;
 
-                    state.upload_path = location.getRoot() + request.getDecodedPath() + ServerUtils::generateUniqueString() +
+                    state.upload_path = location.getRoot() + request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
                                         ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
+
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                     if (!state.output_file.is_open())
                         throw NOT_FOUND;
                     chunked_uploads[client_sockfd] = state;
-                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
-                        throw NOT_ALLOWED;
+
                     processChunkedData(client_sockfd, request.getBody(), epoll_fd);
                 }
             }
@@ -244,13 +247,12 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
                 string url = request.getDecodedPath();
 
                 if (!getFinalUrl(url))
-                {
                     throw NOT_FOUND;
-                }
 
                 if (this->matchLocation(location, request.getDecodedPath(), request))
                 {
-
+                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
+                        throw NOT_ALLOWED;
                     if (is_CgiRequest(url, location.getCgiExtension()))
                     {
                         CGI cgi;
@@ -263,20 +265,21 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
                         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
                         return;
                     }
+                    if (location.getUploadDir().empty())
+                        throw UNAUTHORIZED;
                     ChunkedUploadState state;
                     state.headers_parsed = true;
                     state.content_remaining = 0;
                     state.total_size = 0;
 
-                    state.upload_path = location.getRoot() + request.getDecodedPath() + "/" + ServerUtils::generateUniqueString() +
+                    state.upload_path = location.getRoot() + request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
                                         ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                     if (!state.output_file.is_open())
                         throw NOT_FOUND;
                     chunked_uploads[client_sockfd] = state;
-                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
-                        throw NOT_ALLOWED;
+
                     processPostData(client_sockfd, request.getBody(), epoll_fd);
                 }
             }
@@ -686,13 +689,13 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
     {
         const string &path = locs[i].getPath();
 
-        if (url.find(path) == 0)
+        if (url.find(path) != string::npos)
         {
             size_t pathLength = path.length();
             if (pathLength > bestMatchLength)
             {
                 char nextChar = url[pathLength];
-                if (url[pathLength - 1] == '/' || nextChar == '\0')
+                if (nextChar == '/' || path == "/")
                 {
                     found = true;
                     bestMatch = locs[i];
