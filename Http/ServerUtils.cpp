@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:35 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/24 16:25:45 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/23 23:37:15 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,12 +48,8 @@ ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 
     if (access(filePath.c_str(), F_OK ) != 0)
         throw NOT_FOUND;
-    if (access(filePath.c_str(), R_OK ) != 0 && code < 400)
+    if (access(filePath.c_str(), R_OK ) != 0)
         throw FORBIDEN;
-    else if (access(filePath.c_str(), R_OK ) != 0 && code > 400)
-    {
-        return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(code),code);
-    }
 
     ResponseInfos response;
     response.filePath = filePath;

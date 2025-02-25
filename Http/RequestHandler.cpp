@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/24 20:47:33 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/23 23:47:04 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include "../includes/Cgi.hpp"
 #include <csignal>
 
-RequestHandler::RequestHandler() : reqBuffer(""), bufferSize(0), validCRLF(false)
+RequestHandler::RequestHandler()
 {
 }
 
@@ -185,25 +185,15 @@ bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
 }
-void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config, bool isTimeout)
+void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
     server_config = config;
     try
     {
-        if (isTimeout)
-        {
-            if (hasErrorPage(408))
-                responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(408),408);
-            else
-                responses_info[client_sockfd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(408),408);
-            modifyEpollEvent(epoll_fd,client_sockfd,EPOLLOUT);
-            return ; 
-        }
         if (isNewClient(client_sockfd))
         {
 
-            this->reqBuffer += req;
-            bufferSize += bytes_received;
+            reqBuffer += req;
             if (!validCRLF)
             {
                 if (reqBuffer.find(CRLF_CRLF) == string::npos)
@@ -213,10 +203,10 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
             }
 
             HttpParser parser;
-            request = parser.parse(this->reqBuffer, bufferSize);
-            this->reqBuffer.clear();
-            this->reqBuffer = "";
-            bufferSize = 0;
+
+            request = parser.parse(reqBuffer, bytes_received);
+
+            reqBuffer.clear();
             if (isChunkedRequest(request))
             {
                 if (request.hasHeader(CONTENT_LENGTH))
@@ -615,7 +605,6 @@ static ResponseInfos deleteOrFail(const string path)
 
     case DIRECTORY:
         return deleteDir(path);
-        break;
     case REGULAR:
         if (remove(path.c_str()) == 0)
             return ServerUtils::ressourceToResponse("", NO_CONTENT);
