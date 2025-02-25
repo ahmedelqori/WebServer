@@ -18,6 +18,7 @@ private:
 public:
     Request();
     int buffer_size;
+    int client_sockfd;
     const std::string &getMethod() const;
     const std::string &getPath() const;
     const std::string &getDecodedPath() const;

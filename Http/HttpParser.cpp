@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/23 17:13:35 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/25 20:12:00 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ Request HttpParser::parse(const string &data, int size)
     {
         if (data[i] == '\r' && state != BODY)
         {
-            if (state == REQUEST_LINE && data[i - 1] && data[i - 1] == ' ')
+            if (i > 0 && state == REQUEST_LINE && data[i - 1] && data[i - 1] == ' ')
                 throw BAD_REQUEST;
             if (i + 1 < size && data[i + 1] == '\n')
             {
