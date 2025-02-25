@@ -12,19 +12,31 @@
 
 #include "../includes/HttpParser.hpp"
 
-HttpParser::HttpParser() : state(REQUEST_LINE),method(""),uri(""),version(""),body("") {}
+HttpParser::HttpParser() :
+state(REQUEST_LINE),
+method(""),
+uri(""),
+version(""),
+headers(),
+query_params(),
+body("")
+{}
 
 Request HttpParser::parse(const string &data, int size)
 {
     string line = "";
     bool hasCRLF = false;
+
     if (size == 0)
         throw BAD_REQUEST;
-    for (int i = 0; i < size; i++)
+    
+    for (int i = 0; i < size ; i++)
     {
-        if (data[i] &&  data[i] == '\r' && state != BODY)
+        
+        
+        if ( data[i] == '\r' && state != BODY)
         {
-            if (state == REQUEST_LINE && i > 0 && data[i - 1] == ' ')
+            if (i > 0 && state == REQUEST_LINE && data[i - 1] == ' ')
             {
                 throw BAD_REQUEST;
             }
@@ -33,7 +45,6 @@ Request HttpParser::parse(const string &data, int size)
                 i++;
                 if (data[i + 1] == ' ')
                 {
-
                     throw BAD_REQUEST;
                 }
                 if (!line.empty())
@@ -49,17 +60,17 @@ Request HttpParser::parse(const string &data, int size)
             }
             else
             {
-
                 throw BAD_REQUEST;
             }
         }
         else
+        {
             line += data[i];
+        }
     }
 
     if (!hasCRLF && state == HEADER)
     {
-
         throw BAD_REQUEST;
     }
     if (!line.empty())
@@ -75,8 +86,10 @@ Request HttpParser::parse(const string &data, int size)
     request.setVersion(version);
     request.setHeaders(headers);
     request.setBody(body);
+    
     return request;
 }
+
 
 void HttpParser::processLine(const string &line, int position)
 {
@@ -102,7 +115,7 @@ bool HttpParser::isChunkedData()
 void HttpParser::parseRequestLine(const string &line, int i)
 {
     stringstream ss(line);
-    string last;
+    string last = "";
     int j = 0;
     if (line[j] <= 32)
         throw BAD_REQUEST;
