@@ -103,7 +103,6 @@ public:
     RequestHandler();
     Request request;
     string reqBuffer;
-    int bufferSize;
     bool validCRLF;
     vector<ServerConfig> server_config;
     
