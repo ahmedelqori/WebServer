@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 19:59:52 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/24 19:53:51 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -155,7 +155,7 @@ void Server::processData(int index)
 {
     int             bytesReceived;
     char            buffer[BUFFER_SIZE_SERVER];
-    std::string     requestData = "";
+    std::string     requestData;
     
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
