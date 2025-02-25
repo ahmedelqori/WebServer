@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 15:26:26 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 19:51:28 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,6 +87,7 @@ class  Server
         
         std::map<int, int>                                  IndexServer;
         std::map<int, int>                                  IndexPorts;
+        std::map<int, int>                                  MapPorts;
 
         Server();
         ~Server();
@@ -121,7 +122,7 @@ class  Server
         void                                                ServerLogger(std::string,Logger::Level, bool);
         bool                                                hasCommonElement(std::vector<int>&, std::vector<int>);
         std::string                                         simplifyPath(std::string);
-        std::vector<ServerConfig>                           findCorrectServers(int);
+        std::vector<ServerConfig>                           findCorrectServers(int, int);
 };
 
 #endif

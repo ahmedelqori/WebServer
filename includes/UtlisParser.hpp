@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 15:27:12 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 20:44:14 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,7 +134,7 @@ void                            Error(int count, ...);
 #define MEGA                        "M"
 #define GIGA                        "G"
 
-#define TIMEOUT                     45
+#define TIMEOUT                     5
 #define TIMEOUT_EPOLL               5000
 #define MAX_EVENTS                  1024
 #define BUFFER_SIZE_SERVER          8192
