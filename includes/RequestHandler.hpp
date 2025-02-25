@@ -103,6 +103,7 @@ public:
     RequestHandler();
     Request request;
     string reqBuffer;
+    int bufferSize;
     bool validCRLF;
     vector<ServerConfig> server_config;
     
@@ -112,7 +113,7 @@ public:
     ServerConfig getServer(vector<ServerConfig>, std::string host);
     bool hasErrorPage(int code);
     string getErrorPage(int code);
-    void handleRequest(int client_sockfd, string req,int, int epoll_fd,vector<ServerConfig>);
+    void handleRequest(int client_sockfd, string req,int, int epoll_fd,vector<ServerConfig>, bool timeout);
 
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
