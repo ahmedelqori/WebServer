@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/24 20:47:33 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/24 20:13:35 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -185,20 +185,11 @@ bool RequestHandler::isNewClient(int client_sockfd)
 {
     return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
 }
-void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config, bool isTimeout)
+void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
     server_config = config;
     try
     {
-        if (isTimeout)
-        {
-            if (hasErrorPage(408))
-                responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(408),408);
-            else
-                responses_info[client_sockfd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(408),408);
-            modifyEpollEvent(epoll_fd,client_sockfd,EPOLLOUT);
-            return ; 
-        }
         if (isNewClient(client_sockfd))
         {
 
