@@ -14,16 +14,18 @@
 #include "../includes/Cgi.hpp"
 #include <csignal>
 
-RequestHandler::RequestHandler() : parser(), requestStates()
+RequestHandler::RequestHandler() : requestStates()
 {
 }
 
 void RequestHandler::cleanupConnection(int epoll_fd, int fd)
 {
-
-    requestStates.erase(fd);
-    responses_info.erase(fd);
-    chunked_uploads.erase(fd);
+    if (requestStates.find(fd) != requestStates.end())
+        requestStates.erase(fd);
+    if (responses_info.find(fd) != responses_info.end())
+        responses_info.erase(fd);
+    if (chunked_uploads.find(fd) != chunked_uploads.end())
+        chunked_uploads.erase(fd);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
     close(fd);
 }
@@ -182,35 +184,37 @@ static bool isPostMethod(Request request)
 
 bool RequestHandler::isNewClient(int client_sockfd)
 {
-    return requestStates.find(client_sockfd) == requestStates.end(); //|| (chunked_uploads.find(client_sockfd) == chunked_uploads.end()) );
+    return requestStates.find(client_sockfd) == requestStates.end(); 
 }
+
 void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
     server_config = config;
+
     try
     {
+
         if (isNewClient(client_sockfd))
         {
-            cout << "new user" << endl;
+            cout << "new user: " << client_sockfd << endl;
             requestStates[client_sockfd].partial_request += req;
             requestStates[client_sockfd].total_size += bytes_received;
+            cout << "validating CRLF: " << requestStates[client_sockfd].validCRLF << endl;
             if (!requestStates[client_sockfd].validCRLF)
             {
-
                 if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
                 {
-                    cout << "More data needed " << endl;
+                    cout << "More data needed for CRLF" << endl;
                     return;
                 }
                 else
+                {
                     requestStates[client_sockfd].validCRLF = true;
+                }
             }
 
-            cout << "CRLF FOUNDED" << endl;
-
-            requestStates[client_sockfd].request = parser.parse(requestStates[client_sockfd].partial_request, requestStates[client_sockfd].total_size);
+            requestStates[client_sockfd].request = requestStates[client_sockfd].parser.parse(requestStates[client_sockfd].partial_request, requestStates[client_sockfd].total_size);
             requestStates[client_sockfd].request.client_sockfd = client_sockfd;
-
             if (isChunkedRequest(requestStates[client_sockfd].request))
             {
                 if (requestStates[client_sockfd].request.hasHeader(CONTENT_LENGTH))
@@ -246,72 +250,88 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
             }
             else if (isPostMethod(requestStates[client_sockfd].request))
             {
-                LocationConfig location;
-
-                string url = requestStates[client_sockfd].request.getDecodedPath();
-
-                if (!getFinalUrl(url, client_sockfd))
-                    throw NOT_FOUND;
-
-                if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
-                {
-                    if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
-                        throw NOT_ALLOWED;
-                    if (is_CgiRequest(url, location.getCgiExtension()))
-                    {
-                        CGI cgi;
-
-                        ResponseInfos response;
-                        response = cgi.execute(requestStates[client_sockfd].request, url, location.getCgiExtension(), location.getRoot());
-
-                        responses_info[client_sockfd] = response;
-
-                        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-                        return;
-                    }
-                    if (location.getUploadDir().empty())
-                        throw UNAUTHORIZED;
-                    ChunkedUploadState state;
-                    state.headers_parsed = true;
-                    state.content_remaining = 0;
-                    state.total_size = 0;
-
-                    state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
-                                        ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
-                    state.output_file.open(state.upload_path.c_str(), std::ios::binary);
-
-                    if (!state.output_file.is_open())
-                        throw NOT_FOUND;
-                    chunked_uploads[client_sockfd] = state;
-
-                    processPostData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
-                }
+                // Handle POST method, differentiating it from GET
+                handlePostRequest(client_sockfd, epoll_fd);
             }
+
             else
             {
+                // Handle other methods
                 responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
                 modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
             }
         }
         else
         {
-            requestStates[client_sockfd].partial_request += req;
-            requestStates[client_sockfd].total_size += bytes_received;
-            if (!requestStates[client_sockfd].validCRLF)
+            if (chunked_uploads.find(client_sockfd) == chunked_uploads.end())
             {
-
-                if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
+                requestStates[client_sockfd].partial_request += req;
+                requestStates[client_sockfd].total_size += bytes_received;
+                cout << "validating CRLF: " << requestStates[client_sockfd].validCRLF << endl;
+                if (!requestStates[client_sockfd].validCRLF)
                 {
-                    cout << "More data needed " << endl;
-                    return;
+                    if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
+                    {
+                        cout << "More data needed for CRLF 2" << endl;
+                        return;
+                    }
+                    else
+                    {
+                        requestStates[client_sockfd].validCRLF = true;
+                    }
                 }
+
+                requestStates[client_sockfd].request = requestStates[client_sockfd].parser.parse(requestStates[client_sockfd].partial_request, requestStates[client_sockfd].total_size);
+                requestStates[client_sockfd].request.client_sockfd = client_sockfd;
+                if (isChunkedRequest(requestStates[client_sockfd].request))
+                {
+                    if (requestStates[client_sockfd].request.hasHeader(CONTENT_LENGTH))
+                        throw BAD_REQUEST;
+                    string url = requestStates[client_sockfd].request.getDecodedPath();
+                    if (!getFinalUrl(url, client_sockfd))
+                        throw NOT_FOUND;
+
+                    LocationConfig location;
+                    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+                    {
+
+                        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
+                            throw NOT_ALLOWED;
+                        if (location.getUploadDir().empty())
+                            throw UNAUTHORIZED;
+
+                        ChunkedUploadState state;
+                        state.headers_parsed = true;
+                        state.content_remaining = 0;
+
+                        state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
+                                            ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
+
+                        state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+
+                        if (!state.output_file.is_open())
+                            throw NOT_FOUND;
+                        chunked_uploads[client_sockfd] = state;
+
+                        processChunkedData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
+                    }
+                }
+                else if (isPostMethod(requestStates[client_sockfd].request))
+                {
+                    // Handle POST method, differentiating it from GET
+                    handlePostRequest(client_sockfd, epoll_fd);
+                }
+
                 else
-                    requestStates[client_sockfd].validCRLF = true;
+                {
+
+                    responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
+                    modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+                }
             }
-            if (isChunkedRequest(requestStates[client_sockfd].request))
+
+            else if (isChunkedRequest(requestStates[client_sockfd].request))
             {
-                if (requestStates[client_sockfd].request.hasHeader(CONTENT_LENGTH))
-                    throw BAD_REQUEST;
                 processChunkedData(client_sockfd, req, epoll_fd);
             }
             else if (isPostMethod(requestStates[client_sockfd].request))
@@ -319,41 +339,116 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
 
                 processPostData(client_sockfd, req, epoll_fd);
             }
+
             else
+            {
+
                 responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
+                modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+            }
         }
     }
     catch (int code)
     {
-        map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
-        if (it != chunked_uploads.end())
-        {
-            if (it->second.output_file.is_open())
-            {
-                it->second.output_file.close();
-            }
-            remove(it->second.upload_path.c_str());
-            chunked_uploads.erase(it);
-        }
 
-        if (hasErrorPage(code, client_sockfd))
-        {
-            responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code, client_sockfd), code);
-            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-        }
-        else
-        {
-
-            responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(code), code);
-            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-        }
+        handleError(client_sockfd, epoll_fd, code);
     }
     catch (exception &e)
     {
+
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(INTERNAL_SERVER_ERROR),
             INTERNAL_SERVER_ERROR);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+}
+
+void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
+{
+    LocationConfig location;
+    string url = requestStates[client_sockfd].request.getDecodedPath();
+
+    if (!getFinalUrl(url, client_sockfd))
+        throw NOT_FOUND;
+
+    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+    {
+        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
+            throw NOT_ALLOWED;
+
+        if (is_CgiRequest(url, location.getCgiExtension()))
+        {
+            CGI cgi;
+            ResponseInfos response = cgi.execute(requestStates[client_sockfd].request, url, location.getCgiExtension(), location.getRoot());
+            responses_info[client_sockfd] = response;
+            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+            return;
+        }
+
+        if (location.getUploadDir().empty())
+        {
+            cout << "Location: " << location.getPath() << endl;
+            cout << "Upload dir: " << location.getUploadDir() << endl;
+            throw UNAUTHORIZED;
+        }
+
+        ChunkedUploadState state;
+        state.headers_parsed = true;
+        state.content_remaining = 0;
+        state.total_size = 0;
+
+        state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" +
+                            ServerUtils::generateUniqueString() + ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
+
+        state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+        if (!state.output_file.is_open())
+            throw NOT_FOUND;
+
+        chunked_uploads[client_sockfd] = state;
+        processPostData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
+    }
+}
+
+void RequestHandler::handleGetRequest(int client_sockfd, int epoll_fd)
+{
+    LocationConfig location;
+    string url = requestStates[client_sockfd].request.getDecodedPath();
+
+    if (!getFinalUrl(url, client_sockfd))
+        throw NOT_FOUND;
+
+    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+    {
+        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
+            throw NOT_ALLOWED;
+
+        responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+}
+
+void RequestHandler::handleError(int client_sockfd, int epoll_fd, int code)
+{
+    map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
+    if (it != chunked_uploads.end())
+    {
+        if (it->second.output_file.is_open())
+        {
+            it->second.output_file.close();
+        }
+        remove(it->second.upload_path.c_str());
+        chunked_uploads.erase(it);
+    }
+
+    if (hasErrorPage(code, client_sockfd))
+    {
+        responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code, client_sockfd), code);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+    else
+    {
+        responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(code), code);
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
 }
@@ -716,7 +811,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             if (pathLength > bestMatchLength)
             {
                 char nextChar = url[pathLength];
-                if (nextChar == '/' || path == "/")
+                if (nextChar == '/' || path == "/" || nextChar == '\0')
                 {
                     found = true;
                     bestMatch = locs[i];

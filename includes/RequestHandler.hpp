@@ -42,9 +42,11 @@ public:
     bool validCRLF;
     ofstream output_file;
     Request request;
+    HttpParser parser;
+    ServerConfig server_config;
 
     ChunkedUploadState()
-        : headers_parsed(false), content_remaining(0), total_size(0), validCRLF(false), output_file(), request()
+        : headers_parsed(false), content_remaining(0), total_size(0), validCRLF(false), output_file(), request(), parser(), server_config()
     {
     }
 
@@ -61,7 +63,10 @@ public:
           headers_parsed(other.headers_parsed),
           content_remaining(other.content_remaining),
           upload_path(other.upload_path),
-          total_size(other.total_size)
+          total_size(other.total_size),
+          validCRLF(other.validCRLF),
+            output_file()
+
     {
         if (other.output_file.is_open())
         {
@@ -77,6 +82,8 @@ public:
             headers_parsed = other.headers_parsed;
             content_remaining = other.content_remaining;
             upload_path = other.upload_path;
+            total_size = other.total_size;
+            validCRLF = other.validCRLF;
 
             if (output_file.is_open())
                 output_file.close();
@@ -104,7 +111,7 @@ private:
 public:
     RequestHandler();
 
-    HttpParser parser;
+   
     map<int, ChunkedUploadState> requestStates;
     vector<ServerConfig> server_config;
 
@@ -114,6 +121,9 @@ public:
     ServerConfig getServer(vector<ServerConfig>, std::string host);
     bool hasErrorPage(int code, int);
     string getErrorPage(int code, int);
+    void handleError(int client_sockfd, int epoll_fd, int code);
+    void handlePostRequest(int client_sockfd, int epoll_fd);
+    void handleGetRequest(int client_sockfd, int epoll_fd);
     void handleRequest(int client_sockfd, string req, int, int epoll_fd, vector<ServerConfig>);
 
     bool isNewClient(int client_sockfd);
