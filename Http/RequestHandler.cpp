@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/25 22:26:57 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/26 16:03:30 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,12 +30,12 @@ void RequestHandler::cleanupConnection(int epoll_fd, int fd)
     close(fd);
 }
 
-void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
+bool RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 {
     if (responses_info.find(current_fd) == responses_info.end())
     {
         cleanupConnection(epoll_fd, current_fd);
-        return;
+        return true;
     }
     if (responses_info[current_fd].isCgi == true)
     {
@@ -61,7 +61,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         if (ret == 0)
         {
 
-            return;
+            return false;
         }
         else if (ret > 0)
         {
@@ -98,11 +98,11 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         {
 
             cleanupConnection(epoll_fd, current_fd);
-            return;
+            return true; 
         }
         responses_info[current_fd].headers.clear();
         responses_info[current_fd].bytes_written = 0;
-        return;
+        return false;
     }
 
     if (!responses_info[current_fd].body.empty())
@@ -113,13 +113,14 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         {
 
             cleanupConnection(epoll_fd, current_fd);
-            return;
+            return true;
         }
         responses_info[current_fd].body = responses_info[current_fd].body.substr(bytes_sent);
         if (responses_info[current_fd].body.empty())
         {
 
             cleanupConnection(epoll_fd, current_fd);
+            return true;
         }
     }
 
@@ -129,7 +130,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         if (!fileStream.is_open())
         {
             cleanupConnection(epoll_fd, current_fd);
-            return;
+            return true;
         }
 
         fileStream.seekg(responses_info[current_fd].bytes_written, ios::beg);
@@ -141,7 +142,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
             fileStream.close();
             cleanupConnection(epoll_fd, current_fd);
-            return;
+            return true;
         }
         ssize_t bytes_sent = send(current_fd, buffer, bytes_read, 0);
         if (bytes_sent == -1)
@@ -149,12 +150,16 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
 
             fileStream.close();
             cleanupConnection(epoll_fd, current_fd);
-            return;
+            return true;
         }
         responses_info[current_fd].bytes_written += bytes_sent;
     }
     else
+    {
         cleanupConnection(epoll_fd, current_fd);
+        return true;
+    }
+    return false;
 }
 
 void RequestHandler::modifyEpollEvent(int epoll_fd, int fd, uint32_t events)
