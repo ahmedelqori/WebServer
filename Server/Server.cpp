@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/26 16:04:54 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/26 17:16:42 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -194,15 +194,10 @@ void Server::findServer()
 void Server::loopAndWait()
 {
     ServerLogger(LOG_START, Logger::INFO, false);
-    while (true)
+    while (*(int*)GlobalCondition())
     {
         this->nfds = epoll_wait(epollFD, events, MAX_EVENTS, TIMEOUT_EPOLL);
-        if (this->nfds == -1) {
-            if (errno == EINTR) {
-                ServerLogger(ERR_EPOLL_INTERRUPTED, Logger::WARNING, false);
-                continue;
-            } else Error(2, ERR_EPOLL_CRITICAL, W_EPOLL_WAIT);
-        }
+        if (this->nfds == -1) return ;
         if (this->nfds == 0) this->timeoutChecker();
         if (this->nfds > 0) this->findServer();
     }

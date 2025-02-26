@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   UtilsParser.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:44:03 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 19:56:00 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/26 17:18:33 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,7 +160,7 @@ void    handleSignalInterrupt(int sig)
     if (sig == SIGINT)
     {
        (std::cout << std::endl, close(*(int*)GlobalEpollFd()));
-       (logger.log(logger.INFO, LOG_END) ,std::exit(0));
+       (logger.log(logger.INFO, LOG_END) ,*(int*)GlobalCondition() = false);
     }
 }
 
@@ -168,4 +168,10 @@ void    *GlobalEpollFd()
 {
     static  int fd = -1;
     return (&fd);
+}
+
+void    *GlobalCondition()
+{
+    static int w = true;
+    return (&w);
 }
