@@ -189,14 +189,15 @@ bool RequestHandler::isNewClient(int client_sockfd)
 
 void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
-    server_config = config;
+ 
 
     try
     {
-
+        
         if (isNewClient(client_sockfd))
         {
             cout << "new user: " << client_sockfd << endl;
+            requestStates[client_sockfd].servers_config = config;
             requestStates[client_sockfd].partial_request += req;
             requestStates[client_sockfd].total_size += bytes_received;
             cout << "validating CRLF: " << requestStates[client_sockfd].validCRLF << endl;
@@ -496,12 +497,12 @@ bool RequestHandler::getFinalUrl(string &url, int fd)
 }
 string RequestHandler::getErrorPage(int code, int client_sockfd)
 {
-    map<string, string> errors_pages = getServer(server_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     return errors_pages[itoa(code)];
 }
 bool RequestHandler::hasErrorPage(int code, int client_sockfd)
 {
-    map<string, string> errors_pages = getServer(server_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     string errorPagePath = errors_pages.find(itoa(code)) != errors_pages.end() ? errors_pages[itoa(code)] : ServerUtils::generateErrorPage(code);
     if (access(errorPagePath.c_str(), F_OK | R_OK) == 0)
         return true;
@@ -583,7 +584,7 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
         ressource.redirect = "";
         ressource.path = f_path;
         ressource.cgi_infos = bestMatch.getCgiExtension();
-        ressource.errors_pages = getServer(server_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+        ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
         ressource.root = bestMatch.getRoot();
         ressource.url = url;
 
@@ -617,7 +618,7 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
     ressource.redirect = bestMatch.getRedirectionPath();
     ressource.path = fullPath;
     ressource.cgi_infos = bestMatch.getCgiExtension();
-    ressource.errors_pages = getServer(server_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
 
@@ -796,7 +797,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 {
 
     (void)request;
-    vector<LocationConfig> locs = getServer(server_config, request.getHeader(HOST)).getLocations();
+    vector<LocationConfig> locs = getServer(requestStates[request.client_sockfd].servers_config , request.getHeader(HOST)).getLocations();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
@@ -826,7 +827,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource, int client_sockfd)
 {
-    map<string, string> errorPagePaths = getServer(server_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    map<string, string> errorPagePaths = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
     switch (ServerUtils::checkResource(ressource.path))
@@ -845,7 +846,7 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource, int 
 
 void RequestHandler::checkMaxBodySize(int client_sockfd)
 {
-    size_t maxBodySize = getServer(server_config, requestStates[client_sockfd].request.getHeader(HOST)).getClientMaxBodySize();
+    size_t maxBodySize = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getClientMaxBodySize();
     string contentLenghtStr = requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH).empty() ? "0" : requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH);
 
     stringstream ss(contentLenghtStr);

@@ -43,10 +43,10 @@ public:
     ofstream output_file;
     Request request;
     HttpParser parser;
-    ServerConfig server_config;
+    vector<ServerConfig> servers_config;
 
     ChunkedUploadState()
-        : headers_parsed(false), content_remaining(0), total_size(0), validCRLF(false), output_file(), request(), parser(), server_config()
+        : headers_parsed(false), content_remaining(0), total_size(0), validCRLF(false), output_file(), request(), parser(), servers_config()
     {
     }
 
@@ -113,7 +113,6 @@ public:
 
    
     map<int, ChunkedUploadState> requestStates;
-    vector<ServerConfig> server_config;
 
     bool getFinalUrl(string &url, int);
     bool alreadyExist(string url);
