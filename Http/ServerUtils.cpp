@@ -45,15 +45,7 @@ static std::size_t getFileSize(const std::string &filePath)
 
 ResponseInfos ServerUtils::serveFile(const string &filePath, int code)
 {
-    if (access(filePath.c_str(), F_OK) != 0)
-        throw NOT_FOUND;
-    if (access(filePath.c_str(), R_OK) != 0)
-    {
-        if (code >= 400)
-            return ressourceToResponse(generateErrorPage(NOT_FOUND), NOT_FOUND);
-     
-        return ressourceToResponse(generateErrorPage(FORBIDEN), FORBIDEN);
-    }
+  
 
     ResponseInfos response;
     response.filePath = filePath;

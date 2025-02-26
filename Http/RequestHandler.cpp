@@ -51,7 +51,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
             responses_info[current_fd].isCgi = false;
             if (responses_info[current_fd].headers.empty())
             {
-                if (hasErrorPage(CGI_TIMEOUT1, current_fd))
+                if (hasErrorPage(CGI_TIMEOUT1, current_fd) && access(getErrorPage(CGI_TIMEOUT1, current_fd).c_str(), R_OK) == 0)
                     responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(CGI_TIMEOUT1, current_fd), CGI_TIMEOUT1);
                 else
                     responses_info[current_fd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(CGI_TIMEOUT1), CGI_TIMEOUT1);
@@ -73,7 +73,7 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
             responses_info[current_fd].isCgi = false;
             if (responses_info[current_fd].headers.empty())
             {
-                if (hasErrorPage(BAD_GATEWAY, current_fd))
+                if (hasErrorPage(BAD_GATEWAY, current_fd) && access(getErrorPage(BAD_GATEWAY, current_fd).c_str(), R_OK) == 0)
                     responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(BAD_GATEWAY, current_fd), BAD_GATEWAY);
                 else
                     responses_info[current_fd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(BAD_GATEWAY), BAD_GATEWAY);
@@ -184,28 +184,24 @@ static bool isPostMethod(Request request)
 
 bool RequestHandler::isNewClient(int client_sockfd)
 {
-    return requestStates.find(client_sockfd) == requestStates.end(); 
+    return requestStates.find(client_sockfd) == requestStates.end();
 }
 
 void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
- 
 
     try
     {
-        
+
         if (isNewClient(client_sockfd))
         {
-            cout << "new user: " << client_sockfd << endl;
             requestStates[client_sockfd].servers_config = config;
             requestStates[client_sockfd].partial_request += req;
             requestStates[client_sockfd].total_size += bytes_received;
-            cout << "validating CRLF: " << requestStates[client_sockfd].validCRLF << endl;
             if (!requestStates[client_sockfd].validCRLF)
             {
                 if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
                 {
-                    cout << "More data needed for CRLF" << endl;
                     return;
                 }
                 else
@@ -251,13 +247,13 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
             }
             else if (isPostMethod(requestStates[client_sockfd].request))
             {
-                // Handle POST method, differentiating it from GET
+
                 handlePostRequest(client_sockfd, epoll_fd);
             }
 
             else
             {
-                // Handle other methods
+
                 responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
                 modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
             }
@@ -268,12 +264,10 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
             {
                 requestStates[client_sockfd].partial_request += req;
                 requestStates[client_sockfd].total_size += bytes_received;
-                cout << "validating CRLF: " << requestStates[client_sockfd].validCRLF << endl;
                 if (!requestStates[client_sockfd].validCRLF)
                 {
                     if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
                     {
-                        cout << "More data needed for CRLF 2" << endl;
                         return;
                     }
                     else
@@ -319,7 +313,6 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
                 }
                 else if (isPostMethod(requestStates[client_sockfd].request))
                 {
-                    // Handle POST method, differentiating it from GET
                     handlePostRequest(client_sockfd, epoll_fd);
                 }
 
@@ -388,8 +381,6 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
 
         if (location.getUploadDir().empty())
         {
-            cout << "Location: " << location.getPath() << endl;
-            cout << "Upload dir: " << location.getUploadDir() << endl;
             throw UNAUTHORIZED;
         }
 
@@ -441,7 +432,7 @@ void RequestHandler::handleError(int client_sockfd, int epoll_fd, int code)
         chunked_uploads.erase(it);
     }
 
-    if (hasErrorPage(code, client_sockfd))
+    if (hasErrorPage(code, client_sockfd) && access(getErrorPage(code, client_sockfd).c_str(), R_OK) == 0)
     {
         responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code, client_sockfd), code);
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
@@ -497,12 +488,12 @@ bool RequestHandler::getFinalUrl(string &url, int fd)
 }
 string RequestHandler::getErrorPage(int code, int client_sockfd)
 {
-    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     return errors_pages[itoa(code)];
 }
 bool RequestHandler::hasErrorPage(int code, int client_sockfd)
 {
-    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     string errorPagePath = errors_pages.find(itoa(code)) != errors_pages.end() ? errors_pages[itoa(code)] : ServerUtils::generateErrorPage(code);
     if (access(errorPagePath.c_str(), F_OK | R_OK) == 0)
         return true;
@@ -557,6 +548,10 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
         {
             if (indexPath[0] == '.' || indexPath[0] == '/')
                 throw NOT_FOUND;
+            if (access(indexPath.c_str(), F_OK) != 0)
+                throw NOT_FOUND;
+            if (access(indexPath.c_str(), R_OK) != 0)
+                throw FORBIDEN;
             return ServerUtils::serveFile(indexPath, OK);
         }
     }
@@ -567,6 +562,7 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
     {
         return ServerUtils::serveFile(errPAth, NOT_FOUND);
     }
+
     return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
 }
 
@@ -584,7 +580,7 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
         ressource.redirect = "";
         ressource.path = f_path;
         ressource.cgi_infos = bestMatch.getCgiExtension();
-        ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+        ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
         ressource.root = bestMatch.getRoot();
         ressource.url = url;
 
@@ -618,7 +614,7 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
     ressource.redirect = bestMatch.getRedirectionPath();
     ressource.path = fullPath;
     ressource.cgi_infos = bestMatch.getCgiExtension();
-    ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
+    ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
 
@@ -797,7 +793,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 {
 
     (void)request;
-    vector<LocationConfig> locs = getServer(requestStates[request.client_sockfd].servers_config , request.getHeader(HOST)).getLocations();
+    vector<LocationConfig> locs = getServer(requestStates[request.client_sockfd].servers_config, request.getHeader(HOST)).getLocations();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
@@ -827,8 +823,6 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 
 ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource, int client_sockfd)
 {
-    map<string, string> errorPagePaths = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
-    string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
     switch (ServerUtils::checkResource(ressource.path))
     {
@@ -836,17 +830,28 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource, int 
         return serverRootOrRedirect(ressource);
         break;
     case REGULAR:
+    {
+        if (access(ressource.path.c_str(), F_OK) != 0)
+            throw NOT_FOUND;
+        if (access(ressource.path.c_str(), R_OK) != 0)
+            throw FORBIDEN;
         return ServerUtils::serveFile(ressource.path, OK);
         break;
+    }
+
     default:
-        return ServerUtils::serveFile(errorPagePath, NOT_FOUND);
+    {
+        if (hasErrorPage(NOT_FOUND, client_sockfd) && access(getErrorPage(NOT_FOUND, client_sockfd).c_str(), R_OK) == 0)
+            return ServerUtils::serveFile(getErrorPage(NOT_FOUND, client_sockfd), NOT_FOUND);
+        return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
         break;
+    }
     }
 }
 
 void RequestHandler::checkMaxBodySize(int client_sockfd)
 {
-    size_t maxBodySize = getServer(requestStates[client_sockfd].servers_config , requestStates[client_sockfd].request.getHeader(HOST)).getClientMaxBodySize();
+    size_t maxBodySize = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getClientMaxBodySize();
     string contentLenghtStr = requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH).empty() ? "0" : requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH);
 
     stringstream ss(contentLenghtStr);
