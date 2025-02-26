@@ -135,7 +135,7 @@ public:
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
     ResponseInfos handleDelete(int);
     void modifyEpollEvent(int epoll_fd, int fd, uint32_t events);
-    void handleWriteEvent(int epoll_fd, int current_fd);
+    bool handleWriteEvent(int epoll_fd, int current_fd);
     ResponseInfos serveRessourceOrFail(RessourceInfo ressource, int client_sockfd);
     bool matchLocation(LocationConfig &loc, const string url, const Request &request);
 };

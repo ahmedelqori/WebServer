@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 19:53:51 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/26 16:04:54 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,12 +177,17 @@ void Server::acceptAndAnswer(int index)
 
 void Server::findServer()
 {
-    int index     = INDEX;
+    int index     = INDEX, status;
     
     while (++index < this->nfds)
     {
         if (this->events[index].events & EPOLLIN) this->acceptAndAnswer(index);
-        if (this->events[index].events & EPOLLOUT) (this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd), this->resetTime(events[index].data.fd));
+        if (this->events[index].events & EPOLLOUT) 
+        {
+            status = this->requestHandler.handleWriteEvent(epollFD, events[index].data.fd);
+            if (status) deleteFromTimeContainer(events[index].data.fd);
+            else this->resetTime(events[index].data.fd);
+        }
     }
 }
 
