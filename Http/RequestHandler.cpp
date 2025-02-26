@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/23 23:47:04 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/25 22:26:57 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,19 +14,20 @@
 #include "../includes/Cgi.hpp"
 #include <csignal>
 
-RequestHandler::RequestHandler()
+RequestHandler::RequestHandler() : requestStates()
 {
 }
 
 void RequestHandler::cleanupConnection(int epoll_fd, int fd)
 {
+    if (requestStates.find(fd) != requestStates.end())
+        requestStates.erase(fd);
+    if (responses_info.find(fd) != responses_info.end())
+        responses_info.erase(fd);
+    if (chunked_uploads.find(fd) != chunked_uploads.end())
+        chunked_uploads.erase(fd);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
     close(fd);
-    request.clearRequest();
-    validCRLF = false;
-    reqBuffer.clear();
-    responses_info.erase(fd);
-    chunked_uploads.erase(fd);
 }
 
 void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
@@ -50,8 +51,8 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
             responses_info[current_fd].isCgi = false;
             if (responses_info[current_fd].headers.empty())
             {
-                if (hasErrorPage(CGI_TIMEOUT1))
-                    responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(CGI_TIMEOUT1), CGI_TIMEOUT1);
+                if (hasErrorPage(CGI_TIMEOUT1, current_fd) && access(getErrorPage(CGI_TIMEOUT1, current_fd).c_str(), R_OK) == 0)
+                    responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(CGI_TIMEOUT1, current_fd), CGI_TIMEOUT1);
                 else
                     responses_info[current_fd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(CGI_TIMEOUT1), CGI_TIMEOUT1);
             }
@@ -72,8 +73,8 @@ void RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
             responses_info[current_fd].isCgi = false;
             if (responses_info[current_fd].headers.empty())
             {
-                if (hasErrorPage(BAD_GATEWAY))
-                    responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(BAD_GATEWAY), BAD_GATEWAY);
+                if (hasErrorPage(BAD_GATEWAY, current_fd) && access(getErrorPage(BAD_GATEWAY, current_fd).c_str(), R_OK) == 0)
+                    responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(BAD_GATEWAY, current_fd), BAD_GATEWAY);
                 else
                     responses_info[current_fd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(BAD_GATEWAY), BAD_GATEWAY);
             }
@@ -183,43 +184,47 @@ static bool isPostMethod(Request request)
 
 bool RequestHandler::isNewClient(int client_sockfd)
 {
-    return chunked_uploads.find(client_sockfd) == chunked_uploads.end();
+    return requestStates.find(client_sockfd) == requestStates.end();
 }
+
 void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
 {
-    server_config = config;
+
     try
     {
+
         if (isNewClient(client_sockfd))
         {
-
-            reqBuffer += req;
-            if (!validCRLF)
+            requestStates[client_sockfd].servers_config = config;
+            requestStates[client_sockfd].partial_request += req;
+            requestStates[client_sockfd].total_size += bytes_received;
+            if (!requestStates[client_sockfd].validCRLF)
             {
-                if (reqBuffer.find(CRLF_CRLF) == string::npos)
+                if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
+                {
                     return;
+                }
                 else
-                    validCRLF = true;
+                {
+                    requestStates[client_sockfd].validCRLF = true;
+                }
             }
 
-            HttpParser parser;
-
-            request = parser.parse(reqBuffer, bytes_received);
-
-            reqBuffer.clear();
-            if (isChunkedRequest(request))
+            requestStates[client_sockfd].request = requestStates[client_sockfd].parser.parse(requestStates[client_sockfd].partial_request, requestStates[client_sockfd].total_size);
+            requestStates[client_sockfd].request.client_sockfd = client_sockfd;
+            if (isChunkedRequest(requestStates[client_sockfd].request))
             {
-                if (request.hasHeader(CONTENT_LENGTH))
+                if (requestStates[client_sockfd].request.hasHeader(CONTENT_LENGTH))
                     throw BAD_REQUEST;
-                string url = request.getDecodedPath();
-                if (!getFinalUrl(url))
+                string url = requestStates[client_sockfd].request.getDecodedPath();
+                if (!getFinalUrl(url, client_sockfd))
                     throw NOT_FOUND;
 
                 LocationConfig location;
-                if (this->matchLocation(location, request.getDecodedPath(), request))
+                if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
                 {
 
-                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
+                    if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
                         throw NOT_ALLOWED;
                     if (location.getUploadDir().empty())
                         throw UNAUTHORIZED;
@@ -228,8 +233,8 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
                     state.headers_parsed = true;
                     state.content_remaining = 0;
 
-                    state.upload_path = location.getRoot() + request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
-                                        ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
+                    state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
+                                        ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
 
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
@@ -237,102 +242,205 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
                         throw NOT_FOUND;
                     chunked_uploads[client_sockfd] = state;
 
-                    processChunkedData(client_sockfd, request.getBody(), epoll_fd);
+                    processChunkedData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
                 }
             }
-            else if (isPostMethod(request))
+            else if (isPostMethod(requestStates[client_sockfd].request))
             {
-                LocationConfig location;
 
-                string url = request.getDecodedPath();
-
-                if (!getFinalUrl(url))
-                    throw NOT_FOUND;
-
-                if (this->matchLocation(location, request.getDecodedPath(), request))
-                {
-                    if (!ServerUtils::isMethodAllowed(request.getMethod(), location.getMethods()))
-                        throw NOT_ALLOWED;
-                    if (is_CgiRequest(url, location.getCgiExtension()))
-                    {
-                        CGI cgi;
-
-                        ResponseInfos response;
-                        response = cgi.execute(request, url, location.getCgiExtension(), location.getRoot());
-
-                        responses_info[client_sockfd] = response;
-
-                        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-                        return;
-                    }
-                    if (location.getUploadDir().empty())
-                        throw UNAUTHORIZED;
-                    ChunkedUploadState state;
-                    state.headers_parsed = true;
-                    state.content_remaining = 0;
-                    state.total_size = 0;
-
-                    state.upload_path = location.getRoot() + request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
-                                        ServerUtils::getFileExtention(request.getHeader(CONTENT_TYPE));
-                    state.output_file.open(state.upload_path.c_str(), std::ios::binary);
-
-                    if (!state.output_file.is_open())
-                        throw NOT_FOUND;
-                    chunked_uploads[client_sockfd] = state;
-
-                    processPostData(client_sockfd, request.getBody(), epoll_fd);
-                }
+                handlePostRequest(client_sockfd, epoll_fd);
             }
+
             else
             {
-                responses_info[client_sockfd] = processRequest(request);
+
+                responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
                 modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
             }
         }
         else
         {
-
-            if (isChunkedRequest(request))
+            if (chunked_uploads.find(client_sockfd) == chunked_uploads.end())
             {
-                if (request.hasHeader(CONTENT_LENGTH))
-                    throw BAD_REQUEST;
+                requestStates[client_sockfd].partial_request += req;
+                requestStates[client_sockfd].total_size += bytes_received;
+                if (!requestStates[client_sockfd].validCRLF)
+                {
+                    if (requestStates[client_sockfd].partial_request.find(CRLF_CRLF) == string::npos)
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        requestStates[client_sockfd].validCRLF = true;
+                    }
+                }
+
+                requestStates[client_sockfd].request = requestStates[client_sockfd].parser.parse(requestStates[client_sockfd].partial_request, requestStates[client_sockfd].total_size);
+                requestStates[client_sockfd].request.client_sockfd = client_sockfd;
+                if (isChunkedRequest(requestStates[client_sockfd].request))
+                {
+                    if (requestStates[client_sockfd].request.hasHeader(CONTENT_LENGTH))
+                        throw BAD_REQUEST;
+                    string url = requestStates[client_sockfd].request.getDecodedPath();
+                    if (!getFinalUrl(url, client_sockfd))
+                        throw NOT_FOUND;
+
+                    LocationConfig location;
+                    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+                    {
+
+                        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
+                            throw NOT_ALLOWED;
+                        if (location.getUploadDir().empty())
+                            throw UNAUTHORIZED;
+
+                        ChunkedUploadState state;
+                        state.headers_parsed = true;
+                        state.content_remaining = 0;
+
+                        state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
+                                            ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
+
+                        state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+
+                        if (!state.output_file.is_open())
+                            throw NOT_FOUND;
+                        chunked_uploads[client_sockfd] = state;
+
+                        processChunkedData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
+                    }
+                }
+                else if (isPostMethod(requestStates[client_sockfd].request))
+                {
+                    handlePostRequest(client_sockfd, epoll_fd);
+                }
+
+                else
+                {
+
+                    responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
+                    modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+                }
+            }
+
+            else if (isChunkedRequest(requestStates[client_sockfd].request))
+            {
                 processChunkedData(client_sockfd, req, epoll_fd);
             }
-            else
+            else if (isPostMethod(requestStates[client_sockfd].request))
+            {
+
                 processPostData(client_sockfd, req, epoll_fd);
+            }
+
+            else
+            {
+
+                responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
+                modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+            }
         }
     }
     catch (int code)
     {
-        map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
-        if (it != chunked_uploads.end())
-        {
-            if (it->second.output_file.is_open())
-            {
-                it->second.output_file.close();
-            }
-            remove(it->second.upload_path.c_str());
-            chunked_uploads.erase(it);
-        }
 
-        if (hasErrorPage(code))
-        {
-            responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code), code);
-            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-        }
-        else
-        {
-
-            responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(code), code);
-            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
-        }
+        handleError(client_sockfd, epoll_fd, code);
     }
     catch (exception &e)
     {
+
         responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
             Request::generateErrorPage(INTERNAL_SERVER_ERROR),
             INTERNAL_SERVER_ERROR);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+}
+
+void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
+{
+    LocationConfig location;
+    string url = requestStates[client_sockfd].request.getDecodedPath();
+
+    if (!getFinalUrl(url, client_sockfd))
+        throw NOT_FOUND;
+
+    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+    {
+        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
+            throw NOT_ALLOWED;
+
+        if (is_CgiRequest(url, location.getCgiExtension()))
+        {
+            CGI cgi;
+            ResponseInfos response = cgi.execute(requestStates[client_sockfd].request, url, location.getCgiExtension(), location.getRoot());
+            responses_info[client_sockfd] = response;
+            modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+            return;
+        }
+
+        if (location.getUploadDir().empty())
+        {
+            throw UNAUTHORIZED;
+        }
+
+        ChunkedUploadState state;
+        state.headers_parsed = true;
+        state.content_remaining = 0;
+        state.total_size = 0;
+
+        state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" +
+                            ServerUtils::generateUniqueString() + ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
+
+        state.output_file.open(state.upload_path.c_str(), std::ios::binary);
+        if (!state.output_file.is_open())
+            throw NOT_FOUND;
+
+        chunked_uploads[client_sockfd] = state;
+        processPostData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
+    }
+}
+
+void RequestHandler::handleGetRequest(int client_sockfd, int epoll_fd)
+{
+    LocationConfig location;
+    string url = requestStates[client_sockfd].request.getDecodedPath();
+
+    if (!getFinalUrl(url, client_sockfd))
+        throw NOT_FOUND;
+
+    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+    {
+        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
+            throw NOT_ALLOWED;
+
+        responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+}
+
+void RequestHandler::handleError(int client_sockfd, int epoll_fd, int code)
+{
+    map<int, ChunkedUploadState>::iterator it = chunked_uploads.find(client_sockfd);
+    if (it != chunked_uploads.end())
+    {
+        if (it->second.output_file.is_open())
+        {
+            it->second.output_file.close();
+        }
+        remove(it->second.upload_path.c_str());
+        chunked_uploads.erase(it);
+    }
+
+    if (hasErrorPage(code, client_sockfd) && access(getErrorPage(code, client_sockfd).c_str(), R_OK) == 0)
+    {
+        responses_info[client_sockfd] = ServerUtils::serveFile(getErrorPage(code, client_sockfd), code);
+        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
+    }
+    else
+    {
+        responses_info[client_sockfd] = ServerUtils::ressourceToResponse(
+            ServerUtils::generateErrorPage(code), code);
         modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
 }
@@ -350,11 +458,11 @@ bool RequestHandler::alreadyExist(string url)
     return false;
 }
 
-bool RequestHandler::getFinalUrl(string &url)
+bool RequestHandler::getFinalUrl(string &url, int fd)
 {
 
     LocationConfig loc;
-    if (this->matchLocation(loc, url, request))
+    if (this->matchLocation(loc, url, requestStates[fd].request))
     {
         if (lastLocations.size() > 0)
         {
@@ -367,9 +475,9 @@ bool RequestHandler::getFinalUrl(string &url)
         lastLocations.push_back(url);
         if (!loc.getRedirectionPath().empty())
         {
-            request.setDecodedPath(loc.getRedirectionPath());
-            url = request.getDecodedPath();
-            getFinalUrl(url);
+            requestStates[fd].request.setDecodedPath(loc.getRedirectionPath());
+            url = requestStates[fd].request.getDecodedPath();
+            getFinalUrl(url, fd);
         }
         lastLocations.clear();
         return true;
@@ -378,14 +486,14 @@ bool RequestHandler::getFinalUrl(string &url)
         lastLocations.clear();
     return false;
 }
-string RequestHandler::getErrorPage(int code)
+string RequestHandler::getErrorPage(int code, int client_sockfd)
 {
-    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     return errors_pages[itoa(code)];
 }
-bool RequestHandler::hasErrorPage(int code)
+bool RequestHandler::hasErrorPage(int code, int client_sockfd)
 {
-    map<string, string> errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    map<string, string> errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     string errorPagePath = errors_pages.find(itoa(code)) != errors_pages.end() ? errors_pages[itoa(code)] : ServerUtils::generateErrorPage(code);
     if (access(errorPagePath.c_str(), F_OK | R_OK) == 0)
         return true;
@@ -396,9 +504,9 @@ ResponseInfos RequestHandler::processRequest(const Request &request)
 {
 
     if (request.getMethod() == GET)
-        return handleGet(request);
+        return handleGet(request.client_sockfd);
     else if (request.getMethod() == DELETE)
-        return handleDelete(request);
+        return handleDelete(request.client_sockfd);
     else
         return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_EXIST), NOT_EXIST);
 }
@@ -440,6 +548,10 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
         {
             if (indexPath[0] == '.' || indexPath[0] == '/')
                 throw NOT_FOUND;
+            if (access(indexPath.c_str(), F_OK) != 0)
+                throw NOT_FOUND;
+            if (access(indexPath.c_str(), R_OK) != 0)
+                throw FORBIDEN;
             return ServerUtils::serveFile(indexPath, OK);
         }
     }
@@ -450,24 +562,25 @@ ResponseInfos RequestHandler::serverRootOrRedirect(RessourceInfo ressource)
     {
         return ServerUtils::serveFile(errPAth, NOT_FOUND);
     }
+
     return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
 }
 
-ResponseInfos RequestHandler::handleGet(const Request &request)
+ResponseInfos RequestHandler::handleGet(int client_sockfd)
 {
 
-    string url = request.getDecodedPath();
+    string url = requestStates[client_sockfd].request.getDecodedPath();
     LocationConfig bestMatch;
     RessourceInfo ressource;
 
-    if (!matchLocation(bestMatch, url, request))
+    if (!matchLocation(bestMatch, url, requestStates[client_sockfd].request))
     {
         string f_path = bestMatch.getRoot() + url;
         ressource.autoindex = bestMatch.getDirectoryListing();
         ressource.redirect = "";
         ressource.path = f_path;
         ressource.cgi_infos = bestMatch.getCgiExtension();
-        ressource.errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+        ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
         ressource.root = bestMatch.getRoot();
         ressource.url = url;
 
@@ -477,7 +590,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             {
                 CGI cgi;
                 ResponseInfos response;
-                response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+                response = cgi.execute(requestStates[client_sockfd].request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
 
                 return response;
             }
@@ -491,7 +604,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
             }
         }
 
-        return serveRessourceOrFail(ressource);
+        return serveRessourceOrFail(ressource, client_sockfd);
     }
 
     string fullPath = bestMatch.getRoot() + url;
@@ -501,7 +614,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
     ressource.redirect = bestMatch.getRedirectionPath();
     ressource.path = fullPath;
     ressource.cgi_infos = bestMatch.getCgiExtension();
-    ressource.errors_pages = getServer(server_config, request.getHeader(HOST)).getErrorPages();
+    ressource.errors_pages = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getErrorPages();
     ressource.root = bestMatch.getRoot();
     ressource.url = url;
 
@@ -529,7 +642,7 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         {
             CGI cgi;
             ResponseInfos response;
-            response = cgi.execute(request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
+            response = cgi.execute(requestStates[client_sockfd].request, url, bestMatch.getCgiExtension(), bestMatch.getRoot());
             return response;
         }
         catch (CGIException &e)
@@ -542,9 +655,9 @@ ResponseInfos RequestHandler::handleGet(const Request &request)
         }
     }
 
-    if (!ServerUtils::isMethodAllowed(request.getMethod(), bestMatch.getMethods()))
+    if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), bestMatch.getMethods()))
         return ServerUtils::ressourceToResponse(Request::generateErrorPage(NOT_ALLOWED), NOT_ALLOWED);
-    return serveRessourceOrFail(ressource);
+    return serveRessourceOrFail(ressource, client_sockfd);
 }
 
 static ResponseInfos deleteDir(const string path)
@@ -628,17 +741,17 @@ static ResponseInfos deleteOrFail(const string path)
         NOT_FOUND);
 }
 
-ResponseInfos RequestHandler::handleDelete(const Request &request)
+ResponseInfos RequestHandler::handleDelete(int client_sockfd)
 {
 
     LocationConfig bestMatch;
-    string url = request.getDecodedPath();
-    if (!getFinalUrl(url))
+    string url = requestStates[client_sockfd].request.getDecodedPath();
+    if (!getFinalUrl(url, requestStates[client_sockfd].request.client_sockfd))
         throw NOT_FOUND;
 
-    if (matchLocation(bestMatch, request.getDecodedPath(), request))
+    if (matchLocation(bestMatch, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
     {
-        if (!ServerUtils::isMethodAllowed(request.getMethod(), bestMatch.getMethods()))
+        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), bestMatch.getMethods()))
             return ServerUtils::ressourceToResponse(
                 ServerUtils::generateErrorPage(NOT_ALLOWED),
                 NOT_ALLOWED);
@@ -650,7 +763,7 @@ ResponseInfos RequestHandler::handleDelete(const Request &request)
             return ServerUtils::ressourceToResponse(
                 ServerUtils::generateErrorPage(NOT_ALLOWED),
                 NOT_ALLOWED);
-        return deleteOrFail(bestMatch.getRoot() + request.getDecodedPath());
+        return deleteOrFail(bestMatch.getRoot() + requestStates[client_sockfd].request.getDecodedPath());
     }
     return ServerUtils::ressourceToResponse(
         ServerUtils::generateErrorPage(FORBIDEN),
@@ -680,7 +793,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
 {
 
     (void)request;
-    vector<LocationConfig> locs = getServer(server_config, request.getHeader(HOST)).getLocations();
+    vector<LocationConfig> locs = getServer(requestStates[request.client_sockfd].servers_config, request.getHeader(HOST)).getLocations();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
     bool found = false;
@@ -695,7 +808,7 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
             if (pathLength > bestMatchLength)
             {
                 char nextChar = url[pathLength];
-                if (nextChar == '/' || path == "/")
+                if (nextChar == '/' || path == "/" || nextChar == '\0')
                 {
                     found = true;
                     bestMatch = locs[i];
@@ -708,10 +821,8 @@ bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const 
     return found;
 }
 
-ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
+ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource, int client_sockfd)
 {
-    map<string, string> errorPagePaths = getServer(server_config, request.getHeader(HOST)).getErrorPages();
-    string errorPagePath = errorPagePaths.find(NOT_FOUND_CODE) != errorPagePaths.end() ? errorPagePaths[NOT_FOUND_CODE] : ServerUtils::generateErrorPage(NOT_FOUND);
 
     switch (ServerUtils::checkResource(ressource.path))
     {
@@ -719,18 +830,29 @@ ResponseInfos RequestHandler::serveRessourceOrFail(RessourceInfo ressource)
         return serverRootOrRedirect(ressource);
         break;
     case REGULAR:
+    {
+        if (access(ressource.path.c_str(), F_OK) != 0)
+            throw NOT_FOUND;
+        if (access(ressource.path.c_str(), R_OK) != 0)
+            throw FORBIDEN;
         return ServerUtils::serveFile(ressource.path, OK);
         break;
+    }
+
     default:
-        return ServerUtils::serveFile(errorPagePath, NOT_FOUND);
+    {
+        if (hasErrorPage(NOT_FOUND, client_sockfd) && access(getErrorPage(NOT_FOUND, client_sockfd).c_str(), R_OK) == 0)
+            return ServerUtils::serveFile(getErrorPage(NOT_FOUND, client_sockfd), NOT_FOUND);
+        return ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(NOT_FOUND), NOT_FOUND);
         break;
+    }
     }
 }
 
-void RequestHandler::checkMaxBodySize()
+void RequestHandler::checkMaxBodySize(int client_sockfd)
 {
-    size_t maxBodySize = getServer(server_config, request.getHeader(HOST)).getClientMaxBodySize();
-    string contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
+    size_t maxBodySize = getServer(requestStates[client_sockfd].servers_config, requestStates[client_sockfd].request.getHeader(HOST)).getClientMaxBodySize();
+    string contentLenghtStr = requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH).empty() ? "0" : requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH);
 
     stringstream ss(contentLenghtStr);
     size_t contentLenght;
@@ -742,7 +864,7 @@ void RequestHandler::checkMaxBodySize()
 void RequestHandler::processChunkedData(int client_sockfd, const string &data, int epoll_fd)
 {
 
-    checkMaxBodySize();
+    checkMaxBodySize(client_sockfd);
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
 
@@ -801,14 +923,14 @@ void RequestHandler::processChunkedData(int client_sockfd, const string &data, i
 void RequestHandler::processPostData(int client_sockfd, const string &data, int epoll_fd)
 {
 
-    checkMaxBodySize();
+    checkMaxBodySize(client_sockfd);
 
     ChunkedUploadState &state = chunked_uploads[client_sockfd];
     state.partial_request += data;
     string contentLenghtStr;
     try
     {
-        contentLenghtStr = request.getHeader(CONTENT_LENGTH).empty() ? "0" : request.getHeader(CONTENT_LENGTH);
+        contentLenghtStr = requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH).empty() ? "0" : requestStates[client_sockfd].request.getHeader(CONTENT_LENGTH);
     }
     catch (const std::exception &e)
     {

@@ -39,10 +39,14 @@ public:
     size_t content_remaining;
     string upload_path;
     size_t total_size;
+    bool validCRLF;
     ofstream output_file;
+    Request request;
+    HttpParser parser;
+    vector<ServerConfig> servers_config;
 
     ChunkedUploadState()
-        : headers_parsed(false), content_remaining(0), total_size(0), output_file()
+        : headers_parsed(false), content_remaining(0), total_size(0), validCRLF(false), output_file(), request(), parser(), servers_config()
     {
     }
 
@@ -59,7 +63,10 @@ public:
           headers_parsed(other.headers_parsed),
           content_remaining(other.content_remaining),
           upload_path(other.upload_path),
-          total_size(other.total_size)
+          total_size(other.total_size),
+          validCRLF(other.validCRLF),
+            output_file()
+
     {
         if (other.output_file.is_open())
         {
@@ -75,6 +82,8 @@ public:
             headers_parsed = other.headers_parsed;
             content_remaining = other.content_remaining;
             upload_path = other.upload_path;
+            total_size = other.total_size;
+            validCRLF = other.validCRLF;
 
             if (output_file.is_open())
                 output_file.close();
@@ -101,31 +110,33 @@ private:
 
 public:
     RequestHandler();
-    Request request;
-    string reqBuffer;
-    bool validCRLF;
-    vector<ServerConfig> server_config;
-    
-    bool getFinalUrl(string& url);
+
+   
+    map<int, ChunkedUploadState> requestStates;
+
+    bool getFinalUrl(string &url, int);
     bool alreadyExist(string url);
     ResponseInfos serverRootOrRedirect(RessourceInfo ressource);
     ServerConfig getServer(vector<ServerConfig>, std::string host);
-    bool hasErrorPage(int code);
-    string getErrorPage(int code);
-    void handleRequest(int client_sockfd, string req,int, int epoll_fd,vector<ServerConfig>);
+    bool hasErrorPage(int code, int);
+    string getErrorPage(int code, int);
+    void handleError(int client_sockfd, int epoll_fd, int code);
+    void handlePostRequest(int client_sockfd, int epoll_fd);
+    void handleGetRequest(int client_sockfd, int epoll_fd);
+    void handleRequest(int client_sockfd, string req, int, int epoll_fd, vector<ServerConfig>);
 
     bool isNewClient(int client_sockfd);
     ResponseInfos processRequest(const Request &request);
     bool is_CgiRequest(string url, map<string, string> cgiInfos);
-    ResponseInfos handleGet(const Request &request);
-    void checkMaxBodySize();
+    ResponseInfos handleGet(int);
+    void checkMaxBodySize(int);
     void cleanupConnection(int epoll_fd, int fd);
     void processPostData(int client_sockfd, const string &data, int epoll_fd);
     void processChunkedData(int client_sockfd, const string &data, int epoll_fd);
-    ResponseInfos handleDelete(const Request &request);
+    ResponseInfos handleDelete(int);
     void modifyEpollEvent(int epoll_fd, int fd, uint32_t events);
     void handleWriteEvent(int epoll_fd, int current_fd);
-    ResponseInfos serveRessourceOrFail(RessourceInfo ressource);
+    ResponseInfos serveRessourceOrFail(RessourceInfo ressource, int client_sockfd);
     bool matchLocation(LocationConfig &loc, const string url, const Request &request);
 };
 
