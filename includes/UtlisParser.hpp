@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   UtlisParser.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:43:42 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/26 17:15:42 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/26 17:52:48 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -135,7 +135,7 @@ void                            Error(int count, ...);
 #define MEGA                        "M"
 #define GIGA                        "G"
 
-#define TIMEOUT                     45
+#define TIMEOUT                     10
 #define TIMEOUT_EPOLL               5000
 #define MAX_EVENTS                  1024
 #define BUFFER_SIZE_SERVER          8192
