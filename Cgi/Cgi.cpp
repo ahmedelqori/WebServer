@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/23 22:30:08 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/26 21:58:45 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,25 +14,8 @@
 #include <algorithm>
 #include <string>
 
-CGI::CGI() : workingDir(""), uploadDir(""), childPid(0)
+CGI::CGI() : childPid(0)
 {
-	memset(outputPipe, -1, sizeof(outputPipe));
-	memset(inputPipe, -1, sizeof(inputPipe));
-	memset(stderrPipe, -1, sizeof(stderrPipe));
-}
-
-CGI::CGI(const string &workDir, const string &upDir) : workingDir(workDir), uploadDir(upDir), childPid(0)
-{
-	memset(outputPipe, -1, sizeof(outputPipe));
-	memset(inputPipe, -1, sizeof(inputPipe));
-	memset(stderrPipe, -1, sizeof(stderrPipe));
-
-	if (workDir.empty() || upDir.empty())
-		throw CGIException("Error: CGI: Invalid working or upload directory");
-	if (access(workDir.c_str(), F_OK) == -1)
-		throw CGIException("Error: CGI: Working directory does not exist");
-	if (access(upDir.c_str(), F_OK) == -1)
-		throw CGIException("Error: CGI: Upload directory does not exist");
 }
 
 CGI::~CGI()
@@ -41,16 +24,6 @@ CGI::~CGI()
 	{
 		kill(childPid, SIGKILL);
 		waitpid(childPid, NULL, 0);
-	}
-
-	for (size_t i = 0; i < 2; i++)
-	{
-		if (inputPipe[i] != -1)
-			close(inputPipe[i]);
-		if (outputPipe[i] != -1)
-			close(outputPipe[i]);
-		if (stderrPipe[i] != -1)
-			close(stderrPipe[i]);
 	}
 }
 
@@ -92,8 +65,7 @@ string extentionExtractor(string path)
 
 void CGI::setupEnvironment(const Request &req, string root, string cgi, string path)
 {
-	cout << "Setting up environment variables for CGI script" << endl;
-
+	(void)root;
 	env["REQUEST_METHOD"] = req.getMethod();
 	env["SERVER_PROTOCOL"] = req.getVersion();
 	env["SERVER_SOFTWARE"] = "Webserv/1.0";
@@ -101,25 +73,25 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 	env["SERVER_NAME"] = "localhost";
 	if (req.getMethod() == "POST")
 	{
+		cout << "content length : " << req.getBody().size() << endl;
 		env["CONTENT_LENGTH"] = to_string1(req.getBody().size());
 		const map<string, string> &headers = req.getHeaders();
 		map<string, string>::const_iterator contentType = headers.find("Content-Type");
+		
 		if (contentType != headers.end())
 		{
 			env["CONTENT_TYPE"] = contentType->second;
+			cout << "content type : " << env["CONTENT_TYPE"] << endl;
 		}
 	}
 	size_t questionMarkPos = req.getPath().find('?');
 	env["QUERY_STRING"] = req.getPath().substr(questionMarkPos + 1);
-
 	string queryString;
 	map<string, string> queryParams = req.getQueryParams();
 	for (map<string, string>::const_iterator it = queryParams.begin(); it != queryParams.end(); ++it)
 	{
 		if (!queryString.empty())
-		{
 			queryString += "&";
-		}
 		queryString += it->first + "=" + it->second;
 	}
 	if (req.getMethod() == "POST")
@@ -127,27 +99,15 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 		queryString += req.getBody();
 		map<string, string> postParams = splitQueryString(req.getBody());
 		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it)
-		{
 			env[it->first] = it->second;
-		}
-		for (map<string, string>::const_iterator it = postParams.begin(); it != postParams.end(); ++it)
-		{
-			cout << "POST PARAMS: " << it->first << " = " << it->second << endl;
-		}
 	}
-	cout << "Query string: " << queryString << endl;
 	env["QUERY_STRING"] = queryString;
 	env["SCRIPT_NAME"] = path;
-
 	env["PATH_INFO"] = env["SCRIPT_NAME"];
-	(void)root;
 	string pathtranslated = cgi;
-	cout << "Path translated: " << pathtranslated << endl;
 	env["PATH_TRANSLATED"] = pathtranslated;
 	env["SCRIPT_FILENAME"] = env["PATH_TRANSLATED"];
-
 	env["REDIRECT_STATUS"] = "200";
-
 	map<string, string>::const_iterator it1 = req.getHeaders().begin();
 	if (it1 != req.getHeaders().end())
 	{
@@ -156,9 +116,7 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 			string headerName = it1->first;
 			transform(headerName.begin(), headerName.end(), headerName.begin(), ::toupper);
 			if (headerName != "CONTENT_LENGTH" && headerName != "CONTENT_TYPE")
-			{
 				headerName = "HTTP_" + headerName;
-			}
 			env[headerName] = it1->second;
 			it1++;
 		}
@@ -176,13 +134,20 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 		}
 		env["HTTP_COOKIE"] = cookieStr;
 	}
-	// Debug output
-	cout << "CGI Environment Variables:" << endl;
-	// for (const auto &pair : env)
+
+	cout << "env : " << endl;
+	if (env.find("HTTP_CONTENT-TYPE") != env.end())
+	{
+		
+		env["CONTENT_TYPE"] = env["HTTP_CONTENT-TYPE"];
+		env.erase("HTTP_CONTENT-TYPE");
+	}
+	
+	//debug
+	// for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
 	// {
-	// 	cout << pair.first << "=" << pair.second << endl;
+	// 	cout << "ENV :" << it->first << " : " << it->second << endl;
 	// }
-	cout << "End of CGI Environment Variables" << endl;
 }
 
 string generateRandomName()
@@ -191,9 +156,7 @@ string generateRandomName()
 	time_t t;
 	srand((unsigned)time(&t));
 	for (int i = 0; i < 10; i++)
-	{
 		name += 'a' + rand() % 26;
-	}
 	return name;
 }
 
@@ -201,9 +164,11 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 {
 	ResponseInfos response;
 
+	
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
 	string path = cgi;
+	cout << "cgi path : " << path << endl;
 	int pid;
 	cgi = string(root) + string(cgi);
 	setupEnvironment(request, root, cgi, path);
@@ -244,10 +209,13 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 		}
 		delete[] envp;
 
-		exit(1);
+		std::exit(1);
 	}
 	else
 	{
+		// cout << "request body :"<<request.getBody() <<"\n"<< endl;
+
+		
 		if (request.getMethod() == "POST" && !request.getBody().empty())	
     	{
     	    std::ofstream inputFileStream(inputFile.c_str(), std::ios::out | std::ios::binary);
@@ -256,8 +224,6 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
     	        inputFileStream << request.getBody();
     	        inputFileStream.close();
     	    }
-    	    else
-    	        cerr << "Error: Failed to write to input file for CGI" << endl;
     	}
 		response.isCgi = 1;
 		response.cgiPid = pid;
@@ -265,8 +231,6 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 		response.cgiOutputFile = outputFile;
 		response.cgiInputFile = inputFile;
 	}
-	cout << "CGI execution complete" << endl;
-	cout << response << endl;
 	return response;
 }
 
@@ -279,65 +243,125 @@ string CGI::getResponse(string output)
 	ifstream inFile(output.c_str(), ios::in | ios::binary);
 	if (!inFile.is_open())
 	{
-		cerr << "Error: Unable to open file for reading CGI response: " << outputFile << endl;
-		if (remove(output.c_str()) != 0 || remove(inputFile.c_str()) != 0 || remove(outputFile.c_str()) != 0)
-			cerr << "Error removing inoutput file: " << strerror(errno) << endl;
+		(remove(output.c_str()) , remove(inputFile.c_str()) , remove(outputFile.c_str()));
 		return response;
 	}
-
 	while ((bytesRead = inFile.readsome(buffer, sizeof(buffer))))
-	{
 		response.append(buffer, bytesRead);
-	}
-
 	inFile.close();
-
 	return response;
 }
-
 ResponseInfos CGI::parseOutput(string output)
 {
-	ResponseInfos response;
-	cout << "response string : " << output << endl;
-	size_t headerEnd = output.find("\r\n\r\n");
+    ResponseInfos response;
+    cout << "output : " << output << endl;
+    size_t headerEnd = output.find("\r\n\r\n");
 
-	if (output.find("PHP Warning") != string::npos || output.find("PHP Error") != string::npos)
+    if (headerEnd == string::npos)
+        headerEnd = output.find("\n\n");
+    if (headerEnd != string::npos)
+    {
+        string headers = output.substr(0, headerEnd);
+        string body = output.substr(headerEnd + (output[headerEnd] == '\r' ? 4 : 2));
+        istringstream headerStream(headers);
+        string line;
+
+        while (getline(headerStream, line))
+        {
+            if (!line.empty() && line[line.size() - 1] == '\r')
+                line.erase(line.size() - 1);
+            size_t colon = line.find(':');
+            if (colon != string::npos)
+            {
+                string key = line.substr(0, colon);
+                string value = line.substr(colon + 1);
+                value.erase(0, value.find_first_not_of(" \t"));
+
+                // Convert key to lowercase for case-insensitive comparison
+                string lowerKey = key;
+                transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
+
+                // Check if the header already exists and override it
+                if (response.getHeaders().find(lowerKey) != response.getHeaders().end())
+                    response.addHeader(key, value);
+                else
+                    response.addHeader(key, value); // Add new header
+                if (lowerKey == "set-cookie")
+                    response.addHeader("Set-Cookie", value);
+            }
+        }
+        response.setBody(body);
+    }
+    else
 	{
-		response.setStatus(FORBIDEN);
-		response.setStatusMessage("PHP Error: " + output.substr(0, output.find('\n')));
+        response.setBody(output);
 	}
-	if (headerEnd == string::npos)
-		headerEnd = output.find("\n\n");
-	if (headerEnd != string::npos)
-	{
-		string headers = output.substr(0, headerEnd);
-		string body = output.substr(headerEnd + (output[headerEnd] == '\r' ? 4 : 2));
-		istringstream headerStream(headers);
-		string line;
 
-		while (getline(headerStream, line))
-		{
-			if (!line.empty() && line[line.size() - 1] == '\r')
-				line.erase(line.size() - 1);
-			size_t colon = line.find(':');
-			if (colon != string::npos)
-			{
-				string key = line.substr(0, colon);
-				string value = line.substr(colon + 1);
-				value.erase(0, value.find_first_not_of(" \t"));
-				if (key == "Set-Cookie")
-					response.addHeader("Set-Cookie", value);
-				else
-					response.addHeader(key, value);
-			}
-		}
-		response.setBody(body);
+	
+	map<string, string> headers = response.getHeaders();
+	if (headers.find("Status") != headers.end())
+	{
+		response.setStatus(atoi(headers.find("Status")->second.c_str()));
+		headers.erase("Status");
+		response.setHeaders(headers);
 	}
 	else
-		response.setBody(output);
+		response.setStatus(200);
 
-	return response;
+    cout << response << endl;
+    return response;
 }
+
+
+// ResponseInfos CGI::parseOutput(string output)
+// {
+// 	ResponseInfos response;
+// 	cout << "output : " << output << endl;
+// 	size_t headerEnd = output.find("\r\n\r\n");
+
+// 	if (headerEnd == string::npos)
+// 		headerEnd = output.find("\n\n");
+// 	if (headerEnd != string::npos)
+// 	{
+// 		string headers = output.substr(0, headerEnd);
+// 		string body = output.substr(headerEnd + (output[headerEnd] == '\r' ? 4 : 2));
+// 		istringstream headerStream(headers);
+// 		string line;
+
+// 		while (getline(headerStream, line))
+// 		{
+// 			if (!line.empty() && line[line.size() - 1] == '\r')
+// 				line.erase(line.size() - 1);
+// 			size_t colon = line.find(':');
+// 			if (colon != string::npos)
+// 			{
+// 				string key = line.substr(0, colon);
+// 				string value = line.substr(colon + 1);
+// 				value.erase(0, value.find_first_not_of(" \t"));
+// 				if (key == "Set-Cookie")
+// 					response.addHeader("Set-Cookie", value);
+// 				else
+// 					response.addHeader(key, value);
+// 			}
+// 		}
+// 		response.setBody(body);
+// 	}
+// 	else
+// 		response.setBody(output);
+
+// 	map<string, string> headers = response.getHeaders();
+// 	if (headers.find("Status") != headers.end())
+// 	{
+// 		response.setStatus(atoi(headers.find("Status")->second.c_str()));
+// 		headers.erase("Status");
+// 		response.setHeaders(headers);
+// 	}
+// 	else
+// 		response.setStatus(200);
+	
+// 	cout << response << endl;
+// 	return response;
+// }
 
 map<string, string> CGI::parseCookies(const string &cookieHeader)
 {
