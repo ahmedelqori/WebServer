@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: Invalid date        by                   #+#    #+#             */
-/*   Updated: 2025/02/27 14:26:13 by mbentahi         ###   ########.fr       */
+/*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
+/*   Updated: 2025/02/27 15:03:01 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -497,7 +497,7 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
     {
         if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
             throw NOT_ALLOWED;
-        full_path = location.getRoot() + url; 
+        full_path = location.getRoot() + url;
         if (is_CgiRequest(url, location.getCgiExtension()))
         {
             if (access(full_path.c_str(), F_OK) != 0)
@@ -756,7 +756,7 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
 
     if (is_CgiRequest(url, bestMatch.getCgiExtension()))
     {
-   
+
         if (access(fullPath.c_str(), F_OK) != 0)
             throw NOT_FOUND;
         if (access(fullPath.c_str(), R_OK) != 0)
@@ -915,7 +915,6 @@ ServerConfig RequestHandler::getServer(vector<ServerConfig> servers, std::string
 bool RequestHandler::matchLocation(LocationConfig &loc, const string url, const Request &request)
 {
 
-    (void)request;
     vector<LocationConfig> locs = getServer(requestStates[request.client_sockfd].servers_config, request.getHeader(HOST)).getLocations();
     LocationConfig bestMatch;
     size_t bestMatchLength = 0;
@@ -1085,5 +1084,21 @@ void RequestHandler::processPostData(int client_sockfd, const string &data, int 
             modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
         }
         state.partial_request.clear();
+    }
+}
+
+RequestHandler::~RequestHandler()
+{
+    map<int, ResponseInfos>::const_iterator it = responses_info.begin();
+
+    while (it != responses_info.end())
+    {
+
+        if (it->second.isCgi && it->second.cgiPid != -1)
+        {
+            kill(it->second.cgiPid, SIGKILL);
+            waitpid(it->second.cgiPid,NULL,0);
+        }
+        it++;
     }
 }
