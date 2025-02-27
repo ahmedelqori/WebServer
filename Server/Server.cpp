@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/27 10:37:41 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 11:08:56 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,7 +73,6 @@ void Server::createSockets()
         sockFD = socket(this->res[index]->ai_family, this->res[index]->ai_socktype | SOCK_NONBLOCK, this->res[index]->ai_protocol);
         if (sockFD == -1) Error(2, ERR_SERVER, ERR_SOCKETS);
         if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) Error(3, ERR_SERVER, ERR_SETSOCKOPT, ERR_REUSEADDR);
-        if (setsockopt(sockFD, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) Error(3, ERR_SERVER, ERR_SETSOCKOPT, ERR_REUSEPORT);
         this->socketContainer.push_back(sockFD);
     }
     currentStateServer = BIND;
