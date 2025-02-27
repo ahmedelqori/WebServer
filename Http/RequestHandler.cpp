@@ -3,12 +3,13 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/27 14:52:49 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/27 15:03:01 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 #include "../includes/RequestHandler.hpp"
 #include "../includes/Cgi.hpp"
@@ -77,6 +78,16 @@ bool RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
                     responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(BAD_GATEWAY, current_fd), BAD_GATEWAY);
                 else
                     responses_info[current_fd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(BAD_GATEWAY), BAD_GATEWAY);
+            }
+            else
+            {
+                if (responses_info[current_fd].getStatus() != OK)
+                {
+                     if (hasErrorPage(responses_info[current_fd].getStatus(), current_fd) && access(getErrorPage(responses_info[current_fd].getStatus(), current_fd).c_str(), R_OK) == 0)
+                    responses_info[current_fd] = ServerUtils::serveFile(getErrorPage(responses_info[current_fd].getStatus(), current_fd), responses_info[current_fd].getStatus());
+                else
+                    responses_info[current_fd] = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(responses_info[current_fd].getStatus()), responses_info[current_fd].getStatus());
+                }
             }
         }
     }
