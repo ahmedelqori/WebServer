@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/26 16:52:41 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/26 18:43:46 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -240,6 +240,7 @@ void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_rece
 
                     state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" + ServerUtils::generateUniqueString() +
                                         ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
+
                     state.output_file.open(state.upload_path.c_str(), std::ios::binary);
 
                     if (!state.output_file.is_open())
@@ -393,9 +394,8 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
         state.content_remaining = 0;
         state.total_size = 0;
 
-        state.upload_path = location.getRoot() + "/"+ requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" +
+        state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" +
                             ServerUtils::generateUniqueString() + ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
-             
 
         state.output_file.open(state.upload_path.c_str(), std::ios::binary);
         if (!state.output_file.is_open())

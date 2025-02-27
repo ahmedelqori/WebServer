@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/05 11:28:02 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/24 19:51:28 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 10:14:10 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,12 @@ template <typename T> bool isDuplicated(T data)
                 return true;
    return false; 
 }
+template <typename X, typename Y> bool isExist(std::map<X, Y> m, X key)
+{
+    if (m.find(key) == m.end())
+        return false;
+    return true;
+}
 
 class  Server
 {
@@ -88,6 +94,7 @@ class  Server
         std::map<int, int>                                  IndexServer;
         std::map<int, int>                                  IndexPorts;
         std::map<int, int>                                  MapPorts;
+        std::map<int, std::string>                          PortsHosts;
 
         Server();
         ~Server();
