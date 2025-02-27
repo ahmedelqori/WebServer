@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/26 21:58:45 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/27 13:23:46 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -277,15 +277,13 @@ ResponseInfos CGI::parseOutput(string output)
                 string value = line.substr(colon + 1);
                 value.erase(0, value.find_first_not_of(" \t"));
 
-                // Convert key to lowercase for case-insensitive comparison
                 string lowerKey = key;
                 transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
 
-                // Check if the header already exists and override it
                 if (response.getHeaders().find(lowerKey) != response.getHeaders().end())
                     response.addHeader(key, value);
                 else
-                    response.addHeader(key, value); // Add new header
+                    response.addHeader(key, value);
                 if (lowerKey == "set-cookie")
                     response.addHeader("Set-Cookie", value);
             }
@@ -311,57 +309,6 @@ ResponseInfos CGI::parseOutput(string output)
     cout << response << endl;
     return response;
 }
-
-
-// ResponseInfos CGI::parseOutput(string output)
-// {
-// 	ResponseInfos response;
-// 	cout << "output : " << output << endl;
-// 	size_t headerEnd = output.find("\r\n\r\n");
-
-// 	if (headerEnd == string::npos)
-// 		headerEnd = output.find("\n\n");
-// 	if (headerEnd != string::npos)
-// 	{
-// 		string headers = output.substr(0, headerEnd);
-// 		string body = output.substr(headerEnd + (output[headerEnd] == '\r' ? 4 : 2));
-// 		istringstream headerStream(headers);
-// 		string line;
-
-// 		while (getline(headerStream, line))
-// 		{
-// 			if (!line.empty() && line[line.size() - 1] == '\r')
-// 				line.erase(line.size() - 1);
-// 			size_t colon = line.find(':');
-// 			if (colon != string::npos)
-// 			{
-// 				string key = line.substr(0, colon);
-// 				string value = line.substr(colon + 1);
-// 				value.erase(0, value.find_first_not_of(" \t"));
-// 				if (key == "Set-Cookie")
-// 					response.addHeader("Set-Cookie", value);
-// 				else
-// 					response.addHeader(key, value);
-// 			}
-// 		}
-// 		response.setBody(body);
-// 	}
-// 	else
-// 		response.setBody(output);
-
-// 	map<string, string> headers = response.getHeaders();
-// 	if (headers.find("Status") != headers.end())
-// 	{
-// 		response.setStatus(atoi(headers.find("Status")->second.c_str()));
-// 		headers.erase("Status");
-// 		response.setHeaders(headers);
-// 	}
-// 	else
-// 		response.setStatus(200);
-	
-// 	cout << response << endl;
-// 	return response;
-// }
 
 map<string, string> CGI::parseCookies(const string &cookieHeader)
 {
