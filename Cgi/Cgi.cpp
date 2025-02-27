@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/27 13:23:46 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/27 14:59:36 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -135,10 +135,8 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 		env["HTTP_COOKIE"] = cookieStr;
 	}
 
-	cout << "env : " << endl;
 	if (env.find("HTTP_CONTENT-TYPE") != env.end())
 	{
-		
 		env["CONTENT_TYPE"] = env["HTTP_CONTENT-TYPE"];
 		env.erase("HTTP_CONTENT-TYPE");
 	}
@@ -168,7 +166,6 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
 	string path = cgi;
-	cout << "cgi path : " << path << endl;
 	int pid;
 	cgi = string(root) + string(cgi);
 	setupEnvironment(request, root, cgi, path);
@@ -213,15 +210,13 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	}
 	else
 	{
-		// cout << "request body :"<<request.getBody() <<"\n"<< endl;
-
-		
 		if (request.getMethod() == "POST" && !request.getBody().empty())	
     	{
+			size_t contentLength = std::strtoul(env["CONTENT_LENGTH"].c_str(),NULL, 10);
     	    std::ofstream inputFileStream(inputFile.c_str(), std::ios::out | std::ios::binary);
     	    if (inputFileStream.is_open())
     	    {
-    	        inputFileStream << request.getBody();
+    	        inputFileStream.write(request.getBody().c_str(), contentLength);
     	        inputFileStream.close();
     	    }
     	}
@@ -231,6 +226,8 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 		response.cgiOutputFile = outputFile;
 		response.cgiInputFile = inputFile;
 	}
+	cout << "CGI executed" << endl;
+	cout << response;
 	return response;
 }
 
