@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/27 11:08:56 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 17:12:36 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -352,7 +352,8 @@ bool    Server::CheckForConflictInServerName()
     while (++index < this->configFile.servers.size())
     {
         const std::vector<std::string>& names = this->configFile.servers[index].getServerNames();
-        server_names.insert(server_names.end(), names.begin(), names.end());
+        if (names[0].size())
+            server_names.insert(server_names.end(), names.begin(), names.end());
     }
     return ::isDuplicated<std::vector<std::string> >(server_names);
 }
