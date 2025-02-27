@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/26 17:59:01 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/27 10:37:41 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,15 +36,20 @@ void Server::CreateAddrOfEachPort(int serverIndex)
     while (++index < this->configFile.servers[serverIndex].getPorts().size())
     {
         addrinfo *res = NULL;
-        this->res.push_back(res);
-        if (getaddrinfo(this->configFile.servers[serverIndex].getHost().c_str(),
-                        itoa(this->configFile.servers[serverIndex].getPorts()[index]).c_str(),
-                        &this->hints,
-                        &this->res[indexRes++]) != 0)
-            Error(2, ERR_SERVER, ERR_GETADDRINFO);
-        IndexPorts.insert(pair<int, int>(indexPort, serverIndex));
-        MapPorts.insert(pair<int, int>(indexPort, this->configFile.servers[serverIndex].getPorts()[index]));
-        indexPort++;
+        if (!(isExist<int, std::string>(PortsHosts, this->configFile.servers[serverIndex].getPorts()[index]) 
+            && PortsHosts[this->configFile.servers[serverIndex].getPorts()[index]] == this->configFile.servers[serverIndex].getHost()))
+        {
+            this->res.push_back(res);
+            if (getaddrinfo(this->configFile.servers[serverIndex].getHost().c_str(),
+                            itoa(this->configFile.servers[serverIndex].getPorts()[index]).c_str(),
+                            &this->hints,
+                            &this->res[indexRes++]) != 0)
+                Error(2, ERR_SERVER, ERR_GETADDRINFO);
+            IndexPorts.insert(pair<int, int>(indexPort, serverIndex));
+            MapPorts.insert(pair<int, int>(indexPort, this->configFile.servers[serverIndex].getPorts()[index]));
+            PortsHosts.insert(std::pair<int, std::string>(this->configFile.servers[serverIndex].getPorts()[index], this->configFile.servers[serverIndex].getHost()));
+            indexPort++;
+        }
     }
 }
 
@@ -159,6 +164,7 @@ void Server::processData(int index)
     
     memset(buffer, 0, sizeof(buffer));
     bytesReceived = recv(events[index].data.fd, buffer, sizeof(buffer) - 1, 0);
+
     if (bytesReceived <= 0)
     {
         (this->requestHandler.cleanupConnection(epollFD, events[index].data.fd), deleteFromTimeContainer(events[index].data.fd));
