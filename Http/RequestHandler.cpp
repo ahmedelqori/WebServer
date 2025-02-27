@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/27 14:52:49 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/27 16:38:55 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -776,9 +776,7 @@ static ResponseInfos deleteDir(const string path)
 {
     DIR *dir = opendir(path.c_str());
     if (!dir)
-        return ServerUtils::ressourceToResponse(
-            ServerUtils::generateErrorPage(FORBIDEN),
-            FORBIDEN);
+        throw FORBIDEN;
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL)
     {
@@ -789,9 +787,7 @@ static ResponseInfos deleteDir(const string path)
             if (stat(fullPath.c_str(), &statbuf) == -1)
             {
                 closedir(dir);
-                return ServerUtils::ressourceToResponse(
-                    ServerUtils::generateErrorPage(FORBIDEN),
-                    FORBIDEN);
+                throw FORBIDEN;
             }
 
             if (S_ISDIR(statbuf.st_mode))
@@ -808,9 +804,7 @@ static ResponseInfos deleteDir(const string path)
                 if (remove(fullPath.c_str()) != 0)
                 {
                     closedir(dir);
-                    return ServerUtils::ressourceToResponse(
-                        ServerUtils::generateErrorPage(FORBIDEN),
-                        FORBIDEN);
+                    throw FORBIDEN;
                 }
             }
         }
@@ -818,6 +812,8 @@ static ResponseInfos deleteDir(const string path)
     closedir(dir);
     if (rmdir(path.c_str()) == 0)
         return ServerUtils::ressourceToResponse("", NO_CONTENT);
+    throw FORBIDEN;
+   
     return ServerUtils::ressourceToResponse(
         ServerUtils::generateErrorPage(FORBIDEN),
         FORBIDEN);
@@ -830,17 +826,10 @@ static ResponseInfos deleteOrFail(const string path)
 
     case DIRECTORY:
         return deleteDir(path);
+        break;
     case REGULAR:
         if (remove(path.c_str()) == 0)
             return ServerUtils::ressourceToResponse("", NO_CONTENT);
-        return ServerUtils::ressourceToResponse(
-            ServerUtils::generateErrorPage(FORBIDEN),
-            FORBIDEN);
-        break;
-    case NOT_EXIST:
-        return ServerUtils::ressourceToResponse(
-            ServerUtils::generateErrorPage(NOT_FOUND),
-            NOT_FOUND);
         break;
     default:
         return ServerUtils::ressourceToResponse(
@@ -861,25 +850,20 @@ ResponseInfos RequestHandler::handleDelete(int client_sockfd)
     if (!getFinalUrl(url, requestStates[client_sockfd].request.client_sockfd))
         throw NOT_FOUND;
 
-    if (matchLocation(bestMatch, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
-    {
-        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), bestMatch.getMethods()))
-            return ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(NOT_ALLOWED),
-                NOT_ALLOWED);
-        if (bestMatch.getPath() == "/")
-            return ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(FORBIDEN),
-                FORBIDEN);
-        if (!ServerUtils::isMethodAllowed(DELETE, bestMatch.getMethods()))
-            return ServerUtils::ressourceToResponse(
-                ServerUtils::generateErrorPage(NOT_ALLOWED),
-                NOT_ALLOWED);
-        return deleteOrFail(bestMatch.getRoot() + requestStates[client_sockfd].request.getDecodedPath());
-    }
-    return ServerUtils::ressourceToResponse(
-        ServerUtils::generateErrorPage(FORBIDEN),
-        FORBIDEN);
+    if (!matchLocation(bestMatch, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
+        throw FORBIDEN;
+    if (!ServerUtils::isMethodAllowed(DELETE, bestMatch.getMethods()))
+        throw NOT_ALLOWED;
+    if (bestMatch.getPath() == "/")
+        throw FORBIDEN;
+    string fullPath = bestMatch.getRoot() + requestStates[client_sockfd].request.getDecodedPath();
+    struct stat statbuf;
+    if (stat(fullPath.c_str(), &statbuf) == -1)
+        throw NOT_FOUND;
+    if (!(statbuf.st_mode & S_IRUSR))
+        throw FORBIDEN;
+
+    return deleteOrFail(bestMatch.getRoot() + requestStates[client_sockfd].request.getDecodedPath());
 }
 
 ServerConfig RequestHandler::getServer(vector<ServerConfig> servers, std::string host)
@@ -1086,7 +1070,7 @@ RequestHandler::~RequestHandler()
         if (it->second.isCgi && it->second.cgiPid != -1)
         {
             kill(it->second.cgiPid, SIGKILL);
-            waitpid(it->second.cgiPid,NULL,0);
+            waitpid(it->second.cgiPid, NULL, 0);
         }
         it++;
     }
