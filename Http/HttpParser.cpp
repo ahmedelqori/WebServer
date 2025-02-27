@@ -6,7 +6,7 @@
 /*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:23:18 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/25 20:12:00 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/27 14:40:50 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -202,7 +202,7 @@ void HttpParser::parseHeader(const string &line)
     if (name.find('\n') != string::npos)
         throw BAD_REQUEST;
     validateWhiteSpaces(name);
-    // trim(name);
+
     lowerString(name);
     trim(value);
 
@@ -257,7 +257,7 @@ char HttpParser::hexToChar(char high, char low)
 
 bool HttpParser::isBadUri(const std::string &uri)
 {
-    // RFC 3986 allowed characters in URLs
+
     static const std::string unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
     static const std::string gen_delims = ":/?#[]@";
     static const std::string sub_delims = "!$&'()*+,;=";
@@ -274,28 +274,28 @@ bool HttpParser::isBadUri(const std::string &uri)
                 !isxdigit(static_cast<unsigned char>(uri[i + 1])) ||
                 !isxdigit(static_cast<unsigned char>(uri[i + 2])))
             {
-                return true; // Invalid percent encoding
+                return true; 
             }
-            i += 2; // Skip the two hex digits
+            i += 2; 
             continue;
         }
 
-        // Check for control characters and non-ASCII characters
+      
         if (c < 32 || c > 126)
         {
             return true;
         }
 
-        // Check if character is in allowed set
+       
         if (allowed.find(c) == std::string::npos)
         {
             return true;
         }
 
-        // Special handling for fragment identifier (#)
+       
         if (c == '#')
         {
-            // Fragment must be the last part of the URI
+         
             for (size_t j = i + 1; j < uri.length(); ++j)
             {
                 char fc = uri[j];
@@ -326,17 +326,17 @@ std::string HttpParser::validatePath(const std::string &path)
         throw URI_TOO_LONG;
     }
 
-    // Check for bad URI characters
+
     if (isBadUri(path))
     {
         throw BAD_REQUEST;
     }
 
-    // Check for path traversal
+
     if (isBadUriTraversal(path))
         throw BAD_REQUEST;
 
-    // Decode percent-encoded characters
+
     std::string decoded;
     for (size_t i = 0; i < path.size(); i++)
     {
@@ -387,7 +387,7 @@ bool HttpParser::isBadUriTraversal(const std::string &uri)
 
         std::string segment = uri.substr(prevPos, pos - prevPos);
 
-        // Check for path traversal attempts
+       
         if (segment == ".." ||
             segment == "." ||
             segment.find("../") != std::string::npos ||
@@ -399,7 +399,7 @@ bool HttpParser::isBadUriTraversal(const std::string &uri)
         prevPos = pos + 1;
     }
 
-    // Check the last segment
+
     if (prevPos < uri.length())
     {
         std::string lastSegment = uri.substr(prevPos);
