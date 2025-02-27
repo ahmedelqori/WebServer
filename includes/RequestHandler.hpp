@@ -110,7 +110,7 @@ private:
 
 public:
     RequestHandler();
-
+    ~RequestHandler();
    
     map<int, ChunkedUploadState> requestStates;
 
