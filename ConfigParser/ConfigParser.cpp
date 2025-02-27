@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParser.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/27 10:02:26 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/23 20:34:50 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 16:52:10 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -171,16 +171,20 @@ void    ConfigParser::handleHostPortState()
 void    ConfigParser::handleServerNameState()
 {
     std::vector<std::string> server_names;
+    std::string              tmp;
     size_t                   i = 0;
+
+    tmp = "";
     if (!this->servers[this->current].getServerNames().empty()) Error(3, ERR_SYNTAX, ERR_DUPLICATED, W_SERVER_NAMES);
     server_names = splitString(this->fileContent[this->index++], WHITE_SPACES);
-    if (server_names[0] != W_SERVER_NAMES || server_names.size() < 2) Error(3, ERR_SYNTAX, W_SERVER_NAMES, W_SERVER, itoa(this->current).c_str());
+    if (server_names[i] != W_SERVER_NAMES) Error(3, ERR_SYNTAX, W_SERVER_NAMES, W_SERVER, itoa(this->current).c_str());
     while (++i < server_names.size())
     {
         if (is_hostname(server_names[i], INDEX) == false)
             Error(2,ERR_SYNTAX, W_SERVER_NAMES);
         this->servers[this->current].setServerNames(server_names[i]);
     }
+    if (server_names.size() == 1) this->servers[this->current].setServerNames(tmp);
     this->currentServerState = ERROR_PAGES;
 }
 

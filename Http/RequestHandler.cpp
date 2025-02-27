@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/27 16:43:34 by aes-sarg         ###   ########.fr       */
+/*   Updated: 2025/02/27 16:49:46 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -156,7 +156,7 @@ bool RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
             return true;
         }
         ssize_t bytes_sent = send(current_fd, buffer, bytes_read, 0);
-        if (bytes_sent == -1)
+        if (bytes_sent <= 0)
         {
 
             fileStream.close();
