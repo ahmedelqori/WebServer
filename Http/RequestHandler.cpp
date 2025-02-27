@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/27 10:38:23 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 13:01:13 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,7 +198,7 @@ void sendFile(int client_fd, string &filePath)
 
     if (!file.is_open())
     {
-        
+
         return;
     }
 
@@ -206,7 +206,7 @@ void sendFile(int client_fd, string &filePath)
     while (file.read(buffer, sizeof(buffer)))
     {
         ssize_t bytes_sent = 0;
-        size_t bytes_to_send = file.gcount();
+        ssize_t bytes_to_send = file.gcount();
 
         while (bytes_sent < bytes_to_send)
         {
@@ -252,7 +252,11 @@ void RequestHandler::sendTimeOutResponse(int client_fd, vector<ServerConfig> con
             string responseHeadersStr = responseHeaders.getResponse();
 
             ssize_t bytes_sent = send(client_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+            if (bytes_sent <= 0)
+            {
 
+            return ;
+            }
             sendFile(client_fd, response.filePath);
         }
         else
