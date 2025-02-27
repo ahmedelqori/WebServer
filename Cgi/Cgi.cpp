@@ -6,7 +6,7 @@
 /*   By: mbentahi <mbentahi@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/28 13:36:03 by mbentahi          #+#    #+#             */
-/*   Updated: 2025/02/27 15:05:40 by mbentahi         ###   ########.fr       */
+/*   Updated: 2025/02/27 17:42:02 by mbentahi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,7 +73,6 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 	env["SERVER_NAME"] = "localhost";
 	if (req.getMethod() == "POST")
 	{
-		cout << "content length : " << req.getBody().size() << endl;
 		env["CONTENT_LENGTH"] = to_string1(req.getBody().size());
 		const map<string, string> &headers = req.getHeaders();
 		map<string, string>::const_iterator contentType = headers.find("Content-Type");
@@ -134,18 +133,11 @@ void CGI::setupEnvironment(const Request &req, string root, string cgi, string p
 		}
 		env["HTTP_COOKIE"] = cookieStr;
 	}
-
 	if (env.find("HTTP_CONTENT-TYPE") != env.end())
 	{
 		env["CONTENT_TYPE"] = env["HTTP_CONTENT-TYPE"];
 		env.erase("HTTP_CONTENT-TYPE");
 	}
-	
-	//debug
-	// for (map<string, string>::const_iterator it = env.begin(); it != env.end(); ++it)
-	// {
-	// 	cout << "ENV :" << it->first << " : " << it->second << endl;
-	// }
 }
 
 string generateRandomName()
@@ -161,8 +153,6 @@ string generateRandomName()
 ResponseInfos CGI::execute(const Request request, string &cgi, map<string, string> cgi_info, string root)
 {
 	ResponseInfos response;
-
-	
 	string extention = extentionExtractor(cgi);
 	string cgi_path = cgi_info[extention];
 	string path = cgi;
@@ -212,7 +202,8 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 	{
 		if (request.getMethod() == "POST" && !request.getBody().empty())	
     	{
-			size_t contentLength = std::strtoul(env["CONTENT_LENGTH"].c_str(),NULL, 10);
+			size_t contentLength = std::strtoul(request.getHeader(CONTENT_LENGTH).c_str(),NULL, 10);
+			
     	    std::ofstream inputFileStream(inputFile.c_str(), std::ios::out | std::ios::binary);
     	    if (inputFileStream.is_open())
     	    {
@@ -226,8 +217,6 @@ ResponseInfos CGI::execute(const Request request, string &cgi, map<string, strin
 		response.cgiOutputFile = outputFile;
 		response.cgiInputFile = inputFile;
 	}
-	cout << "CGI executed" << endl;
-	cout << response;
 	return response;
 }
 
@@ -246,12 +235,12 @@ string CGI::getResponse(string output)
 	while ((bytesRead = inFile.readsome(buffer, sizeof(buffer))))
 		response.append(buffer, bytesRead);
 	inFile.close();
+	(remove(output.c_str()) , remove(inputFile.c_str()) , remove(outputFile.c_str()));
 	return response;
 }
 ResponseInfos CGI::parseOutput(string output)
 {
     ResponseInfos response;
-    cout << "output : " << output << endl;
     size_t headerEnd = output.find("\r\n\r\n");
 
     if (headerEnd == string::npos)
@@ -303,7 +292,6 @@ ResponseInfos CGI::parseOutput(string output)
 	else
 		response.setStatus(200);
 
-    cout << response << endl;
     return response;
 }
 
