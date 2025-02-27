@@ -123,7 +123,7 @@ public:
     void handleError(int client_sockfd, int epoll_fd, int code);
     void sendTimeOutResponse(int,vector<ServerConfig> configs);
     void handlePostRequest(int client_sockfd, int epoll_fd);
-    void handleGetRequest(int client_sockfd, int epoll_fd);
+  
     void handleRequest(int client_sockfd, string req, int, int epoll_fd, vector<ServerConfig>);
 
     bool isNewClient(int client_sockfd);
