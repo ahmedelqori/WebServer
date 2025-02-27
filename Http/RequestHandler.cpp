@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/26 18:43:46 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 10:38:23 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,7 +98,7 @@ bool RequestHandler::handleWriteEvent(int epoll_fd, int current_fd)
         {
 
             cleanupConnection(epoll_fd, current_fd);
-            return true; 
+            return true;
         }
         responses_info[current_fd].headers.clear();
         responses_info[current_fd].bytes_written = 0;
@@ -190,6 +190,112 @@ static bool isPostMethod(Request request)
 bool RequestHandler::isNewClient(int client_sockfd)
 {
     return requestStates.find(client_sockfd) == requestStates.end();
+}
+
+void sendFile(int client_fd, string &filePath)
+{
+    ifstream file(filePath.c_str(), ios::in | ios::binary);
+
+    if (!file.is_open())
+    {
+        
+        return;
+    }
+
+    char buffer[READ_BUFFER_SIZE];
+    while (file.read(buffer, sizeof(buffer)))
+    {
+        ssize_t bytes_sent = 0;
+        size_t bytes_to_send = file.gcount();
+
+        while (bytes_sent < bytes_to_send)
+        {
+            ssize_t result = send(client_fd, buffer + bytes_sent, bytes_to_send - bytes_sent, 0);
+            if (result <= 0)
+            {
+                file.close();
+                return;
+            }
+            bytes_sent += result;
+        }
+    }
+
+    if (file.gcount() > 0)
+    {
+        ssize_t result = send(client_fd, buffer, file.gcount(), 0);
+        if (result <= 0)
+        {
+            file.close();
+            return;
+        }
+    }
+
+    file.close();
+}
+void RequestHandler::sendTimeOutResponse(int client_fd, vector<ServerConfig> configs)
+{
+    map<string, string> errorsPages = getServer(configs, "").getErrorPages();
+    ResponseInfos response;
+    if (errorsPages.find("408") != errorsPages.end())
+    {
+        string path = errorsPages["408"];
+        if (access(path.c_str(), F_OK | R_OK) == 0)
+        {
+            response = ServerUtils::serveFile(path, 408);
+            Response responseHeaders;
+            responseHeaders.setStatus(response.status, response.statusMessage);
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+            {
+                responseHeaders.addHeader(it->first, it->second);
+            }
+
+            string responseHeadersStr = responseHeaders.getResponse();
+
+            ssize_t bytes_sent = send(client_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+
+            sendFile(client_fd, response.filePath);
+        }
+        else
+        {
+            response = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(408), 408);
+            Response responseHeaders;
+            responseHeaders.setStatus(response.status, response.statusMessage);
+            for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+            {
+                responseHeaders.addHeader(it->first, it->second);
+            }
+
+            string responseHeadersStr = responseHeaders.getResponse();
+            responseHeadersStr += response.body;
+            ssize_t bytes_sent = send(client_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+            if (bytes_sent <= 0)
+            {
+
+                return;
+            }
+        }
+    }
+    else
+    {
+        response = ServerUtils::ressourceToResponse(ServerUtils::generateErrorPage(408), 408);
+        Response responseHeaders;
+        responseHeaders.setStatus(response.status, response.statusMessage);
+        for (map<string, string>::const_iterator it = response.headers.begin(); it != response.headers.end(); ++it)
+        {
+            responseHeaders.addHeader(it->first, it->second);
+        }
+
+        string responseHeadersStr = responseHeaders.getResponse();
+
+        responseHeadersStr += response.body;
+
+        ssize_t bytes_sent = send(client_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+        if (bytes_sent <= 0)
+        {
+
+            return;
+        }
+    }
 }
 
 void RequestHandler::handleRequest(int client_sockfd, string req, int bytes_received, int epoll_fd, vector<ServerConfig> config)
@@ -394,7 +500,7 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
         state.content_remaining = 0;
         state.total_size = 0;
 
-        state.upload_path = location.getRoot() + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" +
+        state.upload_path = location.getRoot() + "/" + requestStates[client_sockfd].request.getDecodedPath() + location.getUploadDir() + "/" +
                             ServerUtils::generateUniqueString() + ServerUtils::getFileExtention(requestStates[client_sockfd].request.getHeader(CONTENT_TYPE));
 
         state.output_file.open(state.upload_path.c_str(), std::ios::binary);

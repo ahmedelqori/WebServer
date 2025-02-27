@@ -6,7 +6,7 @@
 /*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/06 14:44:46 by ael-qori          #+#    #+#             */
-/*   Updated: 2025/02/27 10:31:42 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 10:37:41 by ael-qori         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -250,9 +250,13 @@ void    Server::CheckForTimeOut(int fd)
     while (++i < this->ClientStatus.size())
         if (ClientStatus[i].first == fd) break;
     if (i == this->ClientStatus.size()) return;
-
+    
     if (ClientStatus[i].second.isTimedOut())
-        (ClientStatus.erase(ClientStatus.begin() + i),send(fd, TIMEOUT_MESSAGE, strlen(TIMEOUT_MESSAGE),0),requestHandler.cleanupConnection(epollFD,fd));
+    {
+        ClientStatus.erase(ClientStatus.begin() + i);
+        requestHandler.sendTimeOutResponse(fd, findCorrectServers(IndexPorts[IndexServer[fd]], MapPorts[IndexServer[fd]]));
+        requestHandler.cleanupConnection(epollFD,fd);
+    }
 }
 
 void    Server::timeoutChecker()
