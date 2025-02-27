@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   RequestHandler.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ael-qori <ael-qori@student.42.fr>          +#+  +:+       +#+        */
+/*   By: aes-sarg <aes-sarg@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 20:43:44 by aes-sarg          #+#    #+#             */
-/*   Updated: 2025/02/27 10:38:23 by ael-qori         ###   ########.fr       */
+/*   Updated: 2025/02/27 13:19:43 by aes-sarg         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,7 +198,7 @@ void sendFile(int client_fd, string &filePath)
 
     if (!file.is_open())
     {
-        
+
         return;
     }
 
@@ -206,7 +206,7 @@ void sendFile(int client_fd, string &filePath)
     while (file.read(buffer, sizeof(buffer)))
     {
         ssize_t bytes_sent = 0;
-        size_t bytes_to_send = file.gcount();
+        ssize_t bytes_to_send = file.gcount();
 
         while (bytes_sent < bytes_to_send)
         {
@@ -252,7 +252,11 @@ void RequestHandler::sendTimeOutResponse(int client_fd, vector<ServerConfig> con
             string responseHeadersStr = responseHeaders.getResponse();
 
             ssize_t bytes_sent = send(client_fd, responseHeadersStr.c_str(), responseHeadersStr.length(), 0);
+            if (bytes_sent <= 0)
+            {
 
+                return;
+            }
             sendFile(client_fd, response.filePath);
         }
         else
@@ -473,6 +477,8 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
     LocationConfig location;
     string url = requestStates[client_sockfd].request.getDecodedPath();
 
+    string full_path;
+
     if (!getFinalUrl(url, client_sockfd))
         throw NOT_FOUND;
 
@@ -480,9 +486,13 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
     {
         if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
             throw NOT_ALLOWED;
-
+        full_path = location.getRoot() + url; 
         if (is_CgiRequest(url, location.getCgiExtension()))
         {
+            if (access(full_path.c_str(), F_OK) != 0)
+                throw NOT_FOUND;
+            if (access(full_path.c_str(), R_OK) != 0)
+                throw FORBIDEN;
             CGI cgi;
             ResponseInfos response = cgi.execute(requestStates[client_sockfd].request, url, location.getCgiExtension(), location.getRoot());
             responses_info[client_sockfd] = response;
@@ -509,24 +519,6 @@ void RequestHandler::handlePostRequest(int client_sockfd, int epoll_fd)
 
         chunked_uploads[client_sockfd] = state;
         processPostData(client_sockfd, requestStates[client_sockfd].request.getBody(), epoll_fd);
-    }
-}
-
-void RequestHandler::handleGetRequest(int client_sockfd, int epoll_fd)
-{
-    LocationConfig location;
-    string url = requestStates[client_sockfd].request.getDecodedPath();
-
-    if (!getFinalUrl(url, client_sockfd))
-        throw NOT_FOUND;
-
-    if (this->matchLocation(location, requestStates[client_sockfd].request.getDecodedPath(), requestStates[client_sockfd].request))
-    {
-        if (!ServerUtils::isMethodAllowed(requestStates[client_sockfd].request.getMethod(), location.getMethods()))
-            throw NOT_ALLOWED;
-
-        responses_info[client_sockfd] = processRequest(requestStates[client_sockfd].request);
-        modifyEpollEvent(epoll_fd, client_sockfd, EPOLLOUT);
     }
 }
 
@@ -697,6 +689,10 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
 
         if (is_CgiRequest(url, bestMatch.getCgiExtension()))
         {
+            if (access(f_path.c_str(), F_OK) != 0)
+                throw NOT_FOUND;
+            if (access(f_path.c_str(), R_OK) != 0)
+                throw FORBIDEN;
             try
             {
                 CGI cgi;
@@ -749,6 +745,11 @@ ResponseInfos RequestHandler::handleGet(int client_sockfd)
 
     if (is_CgiRequest(url, bestMatch.getCgiExtension()))
     {
+   
+        if (access(fullPath.c_str(), F_OK) != 0)
+            throw NOT_FOUND;
+        if (access(fullPath.c_str(), R_OK) != 0)
+            throw FORBIDEN;
         try
         {
             CGI cgi;
